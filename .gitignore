@@ -204,3 +204,6 @@ vite.config.ts.timestamp-*
 
 # dev doc
 Doc/
+
+# jest
+test-results

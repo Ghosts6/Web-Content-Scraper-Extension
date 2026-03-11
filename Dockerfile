@@ -11,6 +11,15 @@ RUN npm install
 
 COPY app . 
 
-RUN npm run build
+ARG TARGET_BROWSER
+RUN if [ -z "$TARGET_BROWSER" ]; then \
+      npm run build; \
+    else \
+      npm run build:$TARGET_BROWSER; \
+    fi
 
-CMD ["npm", "run", "dev"]
+CMD if [ -z "$TARGET_BROWSER" ]; then \
+      npm run dev; \
+    else \
+      npm run dev:$TARGET_BROWSER; \
+    fi
