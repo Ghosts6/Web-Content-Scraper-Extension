@@ -1,4 +1,3 @@
-
 name: CI
 
 on:
@@ -13,6 +12,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+
     - name: Build chrome variant
       run: |
         docker build --build-arg TARGET_BROWSER=chrome -t web-content-scraper-extension:latest .

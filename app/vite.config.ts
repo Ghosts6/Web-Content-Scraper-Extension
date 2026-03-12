@@ -15,7 +15,7 @@ const generateManifest = (browser: string) => {
     },
     content_scripts: [
       {
-        js: ['content.ts'],
+        js: ['src/content.ts'],
         matches: ['<all_urls>'],
       },
     ],
@@ -32,7 +32,7 @@ const generateManifest = (browser: string) => {
     return {
       ...baseManifest,
       background: {
-        scripts: ['background.ts'],
+        scripts: ['src/background.ts'],
       },
       browser_specific_settings: {
         gecko: {
@@ -46,7 +46,7 @@ const generateManifest = (browser: string) => {
   return {
     ...baseManifest,
     background: {
-      service_worker: 'background.ts',
+      service_worker: 'src/background.ts',
     },
   };
 };
@@ -60,6 +60,13 @@ export default defineConfig(({ mode }) => {
       webExtension({
         manifest: () => generateManifest(browser),
         browser: browser,
+        rollupInputOptions: {
+          input: {
+            popup: path.resolve(__dirname, 'popup.html'),
+            content: path.resolve(__dirname, 'src/content.ts'),
+            background: path.resolve(__dirname, 'src/background.ts'),
+          },
+        },
       }),
     ],
     publicDir: 'src/public',
