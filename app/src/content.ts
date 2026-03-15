@@ -140,12 +140,12 @@ browser.runtime.onMessage.addListener((message: unknown): Promise<unknown> => {
   };
 
   if (msg.action === 'scrape') {
-    const data = extractPageContent();
+    const data = extractPageContent(msg.cleanMode);
     return Promise.resolve({ success: true, data });
   }
 
   if (msg.action === 'scrapeWithSelectors' && msg.selectors) {
-    const data = extractWithSelectors(msg.selectors);
+    const data = extractWithSelectors(msg.selectors, msg.cleanMode);
     return Promise.resolve({ success: true, data });
   }
 

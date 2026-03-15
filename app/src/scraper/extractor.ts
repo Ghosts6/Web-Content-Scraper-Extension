@@ -31,6 +31,36 @@ export interface CustomExtractedContent {
   [fieldName: string]: string | string[];
 }
 
+// ─── Clean Mode ───────────────────────────────────────────────────────────────
+
+const NOISE_SELECTORS = [
+  'script',
+  'style',
+  'noscript',
+  'iframe',
+  'nav',
+  'header',
+  'footer',
+  'aside',
+  '[role="banner"]',
+  '[role="navigation"]',
+  '[role="complementary"]',
+  '[role="contentinfo"]',
+  '.ad',
+  '.ads',
+  '.advertisement',
+  '.sidebar',
+  '.cookie-banner',
+];
+
+function cloneClean(): Document {
+  const clone = document.cloneNode(true) as Document;
+  NOISE_SELECTORS.forEach((sel) => {
+    clone.querySelectorAll(sel).forEach((el) => el.remove());
+  });
+  return clone;
+}
+
 /**
  * Returns trimmed text content from an element.
  * Falls back from innerText (real browsers) to textContent (jsdom/SSR).
@@ -42,31 +72,32 @@ function getText(el: Element): string {
 /**
  * Extracts structured content from the current document using default selectors.
  */
-export function extractPageContent(): ExtractedContent {
+export function extractPageContent(cleanMode = false): ExtractedContent {
+  const doc = cleanMode ? cloneClean() : document;
   const title = document.title ?? '';
 
   const metadata: ExtractedContent['metadata'] = {};
-  const metaAuthor = document.querySelector<HTMLMetaElement>('meta[name="author"]');
-  const metaDesc = document.querySelector<HTMLMetaElement>('meta[name="description"]');
-  const metaKeywords = document.querySelector<HTMLMetaElement>('meta[name="keywords"]');
+  const metaAuthor = doc.querySelector<HTMLMetaElement>('meta[name="author"]');
+  const metaDesc = doc.querySelector<HTMLMetaElement>('meta[name="description"]');
+  const metaKeywords = doc.querySelector<HTMLMetaElement>('meta[name="keywords"]');
   if (metaAuthor?.content) metadata.author = metaAuthor.content;
   if (metaDesc?.content) metadata.description = metaDesc.content;
   if (metaKeywords?.content) metadata.keywords = metaKeywords.content;
 
   const headings = Array.from(
-    document.querySelectorAll<HTMLHeadingElement>('h1,h2,h3,h4,h5,h6')
+    doc.querySelectorAll<HTMLHeadingElement>('h1,h2,h3,h4,h5,h6')
   )
     .map(getText)
     .filter(Boolean);
 
   const paragraphs = Array.from(
-    document.querySelectorAll<HTMLParagraphElement>('p')
+    doc.querySelectorAll<HTMLParagraphElement>('p')
   )
     .map(getText)
     .filter(Boolean);
 
   const lists: string[][] = Array.from(
-    document.querySelectorAll<HTMLUListElement | HTMLOListElement>('ul,ol')
+    doc.querySelectorAll<HTMLUListElement | HTMLOListElement>('ul,ol')
   ).map((list) =>
     Array.from(list.querySelectorAll<HTMLLIElement>('li'))
       .map(getText)
@@ -74,7 +105,7 @@ export function extractPageContent(): ExtractedContent {
   );
 
   const links: ExtractedLink[] = Array.from(
-    document.querySelectorAll<HTMLAnchorElement>('a[href]')
+    doc.querySelectorAll<HTMLAnchorElement>('a[href]')
   )
     .map((a) => ({
       text: getText(a) || a.getAttribute('aria-label') || '',
@@ -83,7 +114,7 @@ export function extractPageContent(): ExtractedContent {
     .filter((l) => l.text && l.url);
 
   const images: ExtractedImage[] = Array.from(
-    document.querySelectorAll<HTMLImageElement>('img[src]')
+    doc.querySelectorAll<HTMLImageElement>('img[src]')
   )
     .map((img) => ({
       src: img.src,
@@ -108,8 +139,10 @@ export function extractPageContent(): ExtractedContent {
  * Each selector key maps to one or more matching elements' text.
  */
 export function extractWithSelectors(
-  selectors: CustomSelectors
+  selectors: CustomSelectors,
+  cleanMode = false
 ): CustomExtractedContent {
+  const doc = cleanMode ? cloneClean() : document;
   const result: CustomExtractedContent = {};
 
   for (const [fieldName, selector] of Object.entries(selectors)) {
@@ -119,7 +152,7 @@ export function extractWithSelectors(
     }
 
     try {
-      const elements = Array.from(document.querySelectorAll(selector));
+      const elements = Array.from(doc.querySelectorAll(selector));
       const texts = elements.map(getText).filter(Boolean);
       result[fieldName] = texts.length === 1 ? texts[0] : texts;
     } catch (e) {

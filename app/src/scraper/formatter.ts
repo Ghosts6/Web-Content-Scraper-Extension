@@ -29,11 +29,11 @@ export function toXML(data: ExtractedContent): string {
 
   // Metadata
   lines.push('  <metadata>');
-  if (data.metadata.author)
+  if (data.metadata.author !== undefined)
     lines.push(`    ${tag('author', esc(data.metadata.author))}`);
-  if (data.metadata.description)
+  if (data.metadata.description !== undefined)
     lines.push(`    ${tag('description', esc(data.metadata.description))}`);
-  if (data.metadata.keywords)
+  if (data.metadata.keywords !== undefined)
     lines.push(`    ${tag('keywords', esc(data.metadata.keywords))}`);
   lines.push('  </metadata>');
 
@@ -128,7 +128,7 @@ export function toMarkdown(data: ExtractedContent): string {
   if (data.images.length) {
     sections.push('## Images');
     data.images.forEach((img) =>
-      sections.push(`- ![${img.alt || 'image'}](${img.src})`)
+      sections.push(`- ![${img.alt}](${img.src})`)
     );
   }
 

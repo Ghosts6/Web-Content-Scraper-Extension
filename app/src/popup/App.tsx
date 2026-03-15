@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import browser from 'webextension-polyfill';
 import type { ExtractedContent, CustomSelectors } from '../scraper/extractor';
 import { Preview } from './components/Preview';
 import { ExportButtons } from './components/ExportButtons';
+import { saveRule, getRuleForDomain } from '../storage/rules';
 
-type View = 'main' | 'preview' | 'export' | 'selectors';
+type View = 'main' | 'preview' | 'export' | 'selectors' | 'batch' | 'batch-results';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 
@@ -20,11 +21,126 @@ export default function App() {
   ]);
   const [pickerTargetIdx, setPickerTargetIdx] = useState<number | null>(null);
 
+  // Clean mode toggle
+  const [cleanMode, setCleanMode] = useState(false);
+
+  // Batch scraping state
+  const [batchUrls, setBatchUrls] = useState<string>('');
+  const [batchResults, setBatchResults] = useState<ExtractedContent[]>([]);
+  const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null);
+
+  // Load existing rules for current domain on mount
+  useEffect(() => {
+    loadDomainRules();
+  }, []);
+
+  async function loadDomainRules() {
+    try {
+      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+      if (tab?.url) {
+        const url = new URL(tab.url);
+        const rule = await getRuleForDomain(url.hostname);
+        if (rule) {
+          const rows = Object.entries(rule.selectors).map(([field, selector]) => ({
+            field,
+            selector,
+          }));
+          if (rows.length > 0) {
+            setSelectorRows(rows);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load domain rules:', e);
+    }
+  }
+
+  async function saveCurrentRule() {
+    try {
+      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+      if (!tab?.url) return;
+
+      const url = new URL(tab.url);
+      const selectors: CustomSelectors = {};
+      for (const row of selectorRows) {
+        if (row.field && row.selector) selectors[row.field] = row.selector;
+      }
+
+      if (Object.keys(selectors).length === 0) return;
+
+      await saveRule({
+        domain: url.hostname,
+        selectors,
+      });
+
+      // Show success feedback
+      setStatus('success');
+      setTimeout(() => setStatus('idle'), 2000);
+    } catch (e) {
+      setStatus('error');
+      setErrorMsg('Failed to save rule');
+    }
+  }
+
+  async function handleBatchScrape() {
+    const urls = batchUrls
+      .split('\n')
+      .map(url => url.trim())
+      .filter(url => url && url.startsWith('http'));
+
+    if (urls.length === 0) return;
+
+    setStatus('loading');
+    setBatchResults([]);
+    setBatchProgress({ current: 0, total: urls.length });
+
+    const results: ExtractedContent[] = [];
+
+    try {
+      for (let i = 0; i < urls.length; i++) {
+        const url = urls[i];
+        setBatchProgress({ current: i + 1, total: urls.length });
+
+        try {
+          // Open the URL in a new tab
+          const tab = await browser.tabs.create({ url, active: false });
+          
+          // Wait for the page to load
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // Scrape the content
+          const response = await browser.tabs.sendMessage(tab.id!, { 
+            action: 'scrape', 
+            cleanMode 
+          }) as { success: true; data: ExtractedContent } | { success: false; error: string };
+
+          if (response.success) {
+            results.push(response.data);
+          }
+
+          // Close the tab
+          await browser.tabs.remove(tab.id!);
+        } catch (e) {
+          console.warn(`Failed to scrape ${url}:`, e);
+        }
+      }
+
+      setBatchResults(results);
+      setStatus('success');
+      setView('batch-results');
+    } catch (e) {
+      setStatus('error');
+      setErrorMsg('Batch scraping failed');
+    } finally {
+      setBatchProgress(null);
+    }
+  }
+
   async function handleScrape() {
     setStatus('loading');
     setErrorMsg('');
     try {
-      const response = await browser.runtime.sendMessage({ action: 'scrape' }) as
+      const response = await browser.runtime.sendMessage({ action: 'scrape', cleanMode }) as
         | { success: true; data: ExtractedContent }
         | { success: false; error: string };
 
@@ -51,6 +167,7 @@ export default function App() {
       const response = await browser.runtime.sendMessage({
         action: 'scrapeWithSelectors',
         selectors,
+        cleanMode,
       }) as { success: true; data: ExtractedContent } | { success: false; error: string };
 
       if (!response.success) throw new Error((response as { success: false; error: string }).error);
@@ -119,6 +236,22 @@ export default function App() {
       {/* ── Main View ── */}
       {view === 'main' && (
         <div className="space-y-4">
+          {/* Clean Mode Toggle */}
+          <div className="card p-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={cleanMode}
+                onChange={(e) => setCleanMode(e.target.checked)}
+                className="w-4 h-4 text-primary-600 bg-secondary-100 border-secondary-300 rounded focus:ring-primary-500"
+              />
+              <div>
+                <p className="text-xs font-medium text-secondary-700">Clean Content Mode</p>
+                <p className="text-xs text-secondary-500">Remove ads, navigation, and noise elements</p>
+              </div>
+            </label>
+          </div>
+
           <div className="card-luxe p-5 space-y-3">
             <h2 className="text-sm font-semibold text-secondary-700">Quick Scrape</h2>
             <p className="text-xs text-secondary-500">
@@ -139,6 +272,15 @@ export default function App() {
               onClick={() => setView('selectors')}
             >
               🎯 Custom Selectors
+            </button>
+          </div>
+
+          <div className="card p-4">
+            <button
+              className="btn-secondary w-full text-sm"
+              onClick={() => setView('batch')}
+            >
+              📄 Batch Scrape
             </button>
           </div>
 
@@ -205,6 +347,22 @@ export default function App() {
       {/* ── Custom Selectors View ── */}
       {view === 'selectors' && (
         <div className="space-y-4">
+          {/* Clean Mode Toggle */}
+          <div className="card p-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={cleanMode}
+                onChange={(e) => setCleanMode(e.target.checked)}
+                className="w-4 h-4 text-primary-600 bg-secondary-100 border-secondary-300 rounded focus:ring-primary-500"
+              />
+              <div>
+                <p className="text-xs font-medium text-secondary-700">Clean Content Mode</p>
+                <p className="text-xs text-secondary-500">Remove ads, navigation, and noise elements</p>
+              </div>
+            </label>
+          </div>
+
           <div className="card-luxe p-4 space-y-3">
             <h2 className="text-sm font-semibold text-secondary-700">Custom CSS Selectors</h2>
             <p className="text-xs text-secondary-500">
@@ -265,10 +423,129 @@ export default function App() {
             >
               {status === 'loading' ? 'Scraping…' : '⚡ Scrape with Selectors'}
             </button>
+            <button
+              className="btn-accent w-full text-sm"
+              onClick={saveCurrentRule}
+              disabled={status === 'loading'}
+            >
+              💾 Save Rule for Domain
+            </button>
           </div>
 
           <button className="btn-secondary w-full text-sm" onClick={() => setView('main')}>
             ← Back
+          </button>
+        </div>
+      )}
+
+      {/* ── Batch Scrape View ── */}
+      {view === 'batch' && (
+        <div className="space-y-4">
+          {/* Clean Mode Toggle */}
+          <div className="card p-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={cleanMode}
+                onChange={(e) => setCleanMode(e.target.checked)}
+                className="w-4 h-4 text-primary-600 bg-secondary-100 border-secondary-300 rounded focus:ring-primary-500"
+              />
+              <div>
+                <p className="text-xs font-medium text-secondary-700">Clean Content Mode</p>
+                <p className="text-xs text-secondary-500">Remove ads, navigation, and noise elements</p>
+              </div>
+            </label>
+          </div>
+
+          <div className="card-luxe p-4 space-y-3">
+            <h2 className="text-sm font-semibold text-secondary-700">Batch URL Scraper</h2>
+            <p className="text-xs text-secondary-500">
+              Enter one URL per line to scrape multiple pages automatically.
+            </p>
+
+            <textarea
+              className="input-base text-xs py-2 h-32 resize-none"
+              placeholder="https://example.com/page1&#10;https://example.com/page2&#10;https://example.com/page3"
+              value={batchUrls}
+              onChange={(e) => setBatchUrls(e.target.value)}
+            />
+
+            {batchProgress && (
+              <div className="text-center py-2">
+                <p className="text-xs text-secondary-600">
+                  Processing {batchProgress.current} of {batchProgress.total} URLs...
+                </p>
+                <div className="w-full bg-secondary-200 rounded-full h-2 mt-1">
+                  <div
+                    className="bg-primary-500 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
+
+            <button
+              className="btn-primary w-full text-sm"
+              onClick={handleBatchScrape}
+              disabled={status === 'loading' || !batchUrls.trim()}
+            >
+              {status === 'loading' ? 'Scraping…' : '🚀 Start Batch Scrape'}
+            </button>
+          </div>
+
+          <button className="btn-secondary w-full text-sm" onClick={() => setView('main')}>
+            ← Back
+          </button>
+        </div>
+      )}
+
+      {/* ── Batch Results View ── */}
+      {view === 'batch-results' && (
+        <div className="space-y-4">
+          <div className="card-luxe p-4">
+            <h2 className="text-sm font-semibold text-secondary-700">Batch Results</h2>
+            <p className="text-xs text-secondary-500">
+              Scraped {batchResults.length} pages successfully.
+            </p>
+
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1 mt-3">
+              {batchResults.map((result, idx) => (
+                <div key={idx} className="card p-3">
+                  <p className="text-xs font-medium text-secondary-800 truncate">
+                    {result.title || `Page ${idx + 1}`}
+                  </p>
+                  <p className="text-xs text-secondary-500 truncate">{result.url}</p>
+                  <div className="flex gap-2 mt-2 text-xs text-secondary-400">
+                    <span>{result.headings.length} headings</span>
+                    <span>{result.paragraphs.length} paragraphs</span>
+                    <span>{result.links.length} links</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {batchResults.length > 0 && (
+              <button
+                className="btn-accent w-full text-sm mt-3"
+                onClick={() => {
+                  // Export all results as JSON
+                  const content = JSON.stringify(batchResults, null, 2);
+                  const blob = new Blob([content], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'batch-scrape-results.json';
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+              >
+                ↓ Export All Results (JSON)
+              </button>
+            )}
+          </div>
+
+          <button className="btn-secondary w-full text-sm" onClick={() => setView('batch')}>
+            ← Back to Batch
           </button>
         </div>
       )}

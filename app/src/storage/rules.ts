@@ -8,6 +8,19 @@ export interface SiteRule {
   updatedAt: number;
 }
 
+// Type guard to validate if an object is a SiteRule
+function isSiteRule(obj: any): obj is SiteRule {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    typeof obj.domain === 'string' &&
+    typeof obj.selectors === 'object' &&
+    obj.selectors !== null &&
+    typeof obj.createdAt === 'number' &&
+    typeof obj.updatedAt === 'number'
+  );
+}
+
 const RULES_PREFIX = 'rule:';
 const PREFS_KEY = 'user_prefs';
 
@@ -38,14 +51,19 @@ export async function saveRule(rule: Omit<SiteRule, 'createdAt' | 'updatedAt'>):
 export async function getRule(domain: string): Promise<SiteRule | null> {
   const key = RULES_PREFIX + domain;
   const result = await browser.storage.sync.get(key);
-  return (result[key] as SiteRule) ?? null;
+  const rule = result[key];
+  if (isSiteRule(rule)) {
+    return rule;
+  }
+  return null;
 }
 
 export async function getAllRules(): Promise<SiteRule[]> {
   const all = await browser.storage.sync.get(null);
   return Object.entries(all)
     .filter(([k]) => k.startsWith(RULES_PREFIX))
-    .map(([, v]) => v as SiteRule);
+    .map(([, v]) => v as SiteRule)
+    .filter(isSiteRule); // Filter out any malformed rules
 }
 
 export async function deleteRule(domain: string): Promise<void> {
@@ -81,3 +99,4 @@ export async function getPreferences(): Promise<UserPreferences> {
   const result = await browser.storage.sync.get(PREFS_KEY);
   return { ...DEFAULT_PREFS, ...(result[PREFS_KEY] as Partial<UserPreferences>) };
 }
+
