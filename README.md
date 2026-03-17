@@ -1,38 +1,36 @@
-![baner](https://github.com/Ghosts6/Local-website/blob/main/img/Baner.png)
+![banner](https://github.com/Ghosts6/Local-website/blob/main/img/Baner.png)
 
-# Web Content Scraper Extension
+# 🕸️ Web Content Scraper Extension
 
-A browser extension that extracts structured content from any webpage and exports it in multiple formats. Built for developers, researchers, and data collectors who need structured page data without writing custom scraping scripts.
+A browser extension that extracts structured content from any webpage and exports it in multiple formats. Built for developers, researchers, and data collectors who need clean, structured page data without writing custom scraping scripts.
 
-Supports Chrome and Firefox.
+Supports **Chrome** and **Firefox**.
 
 ---
 
-## Demo
+## 🎬 Demo
 
 Coming soon
 
 ---
 
-## Features
+## ✨ Features
 
-**Page Extraction** — Automatically pulls titles, headings (h1–h6), paragraphs, lists, links, images, and metadata (author, description, keywords) from any page.
-
-**Multi-Format Export** — Export scraped content as JSON, XML, Markdown, or plain text. Download directly to a file or copy to clipboard.
-
-**Content Preview & Edit** — Review extracted content before exporting. Remove unwanted sections from the preview panel.
-
-**Custom CSS Selectors** — Define your own selectors to target specific elements on any page. Useful for structured, repeatable extraction across different sites.
-
-**Visual Element Picker** — Click any element on a page and the extension generates a CSS selector for it automatically.
-
-**Site-Specific Rule Profiles** — Save selector configurations per domain. The extension applies them automatically when you revisit the site.
-
-**Data Sync** — Rules and preferences sync across devices using the browser's built-in `storage.sync` API.
+| Feature | Description |
+|---|---|
+| Page Extraction | Pulls titles, headings (h1–h6), paragraphs, lists, links, images, and metadata from any page |
+| Multi-Format Export | Export as JSON, XML, Markdown, or plain text - download to file or copy to clipboard |
+| Content Preview & Edit | Review and remove unwanted sections before exporting |
+| Custom CSS Selectors | Define your own selectors to target specific elements on any site |
+| Visual Element Picker | Click any element on a page and get its CSS selector generated automatically |
+| Clean Content Mode | Strips ads, navbars, sidebars, and other noise before extracting |
+| Site-Specific Profiles | Save selector rules per domain - applied automatically on revisit |
+| Batch Scraping | Provide a list of URLs and scrape them all in one run |
+| Data Sync | Rules and preferences sync across devices via `storage.sync` |
 
 ---
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 | Area | Tool |
 |---|---|
@@ -46,30 +44,40 @@ Coming soon
 
 ---
 
-## Project Structure
+## 📁 Project Structure
 
 ```
-extension/
- ├ src/
- │  ├ background.ts          # Service worker — message routing
- │  ├ content.ts             # Injected into pages — DOM scraping & element picker
- │  ├ scraper/
- │  │   ├ extractor.ts       # Content extraction logic
- │  │   └ formatter.ts       # JSON / XML / Markdown / text formatters
- │  ├ popup/
- │  │   ├ App.tsx            # Main popup UI
- │  │   └ components/
- │  │       ├ Preview.tsx    # Content preview panel
- │  │       └ ExportButtons.tsx
- │  └ storage/
- │      └ rules.ts           # Site rule profiles + user preferences
- ├ manifest.json
- └ vite.config.ts
+app/
+ ├── src/
+ │   ├── background.ts              # Service worker - message routing between popup and content
+ │   ├── content.ts                 # Injected into pages - DOM scraping and element picker
+ │   ├── scraper/
+ │   │   ├── extractor.ts           # Core content extraction logic
+ │   │   └── formatter.ts           # JSON / XML / Markdown / plain text formatters
+ │   ├── popup/
+ │   │   ├── App.tsx                # Main popup UI and view routing
+ │   │   └── components/
+ │   │       ├── Preview.tsx        # Tabbed content preview with per-item removal
+ │   │       └── ExportButtons.tsx  # Download and clipboard export controls
+ │   ├── storage/
+ │   │   └── rules.ts               # Site rule profiles and user preferences
+ │   └── styles/
+ │       └── tailwind.css           # Tailwind base + custom component classes
+ ├── test/
+ │   ├── App.test.tsx
+ │   ├── background.test.ts
+ │   ├── content.test.ts
+ │   ├── extractor.test.ts
+ │   ├── formatter.test.ts
+ │   └── storage.test.ts
+ ├── manifest.json
+ ├── vite.config.ts
+ └── popup.html
 ```
 
 ---
 
-## Setup
+## ⚙️ Setup
 
 ### Requirements
 
@@ -113,42 +121,42 @@ npm test
 
 ---
 
-## Loading the Extension in Dev Mode
+## 🔌 Loading the Extension in Dev Mode
 
 ### Chrome
 
-1. Build the extension: `npm run build:chrome`
-2. Open Chrome and go to `chrome://extensions`
-3. Enable **Developer mode** (toggle in the top right)
+1. Build: `npm run build:chrome`
+2. Open Chrome and navigate to `chrome://extensions`
+3. Enable **Developer mode** using the toggle in the top right
 4. Click **Load unpacked**
 5. Select the `app/dist/chrome` folder
-6. The extension icon will appear in your toolbar
+6. The extension icon appears in your toolbar
 
-To reload after code changes: rebuild, then click the refresh icon on the extension card in `chrome://extensions`.
+To reload after a code change: rebuild, then click the refresh icon on the extension card.
 
 ### Firefox
 
-1. Build the extension: `npm run build:firefox`
-2. Open Firefox and go to `about:debugging`
+1. Build: `npm run build:firefox`
+2. Open Firefox and navigate to `about:debugging`
 3. Click **This Firefox** in the left sidebar
 4. Click **Load Temporary Add-on**
-5. Open the `app/dist/firefox` folder and select the `manifest.json` file
-6. The extension icon will appear in your toolbar
+5. Open the `app/dist/firefox` folder and select `manifest.json`
+6. The extension icon appears in your toolbar
 
-Note: Temporary add-ons in Firefox are removed when the browser closes. Repeat these steps after each restart.
+> Temporary add-ons in Firefox are removed when the browser closes. Repeat these steps after each restart.
 
 ### Using Docker Builds with the Browser
 
-If you built using Docker, the output is written to `app/dist/chrome` or `app/dist/firefox` on your host machine via the volume mount. Load the folder the same way as described above — Docker just handles the build step.
+Docker builds write output to `app/dist/chrome` or `app/dist/firefox` on your host machine via the volume mount. Load that folder exactly the same way as above - Docker only handles the build step, not the browser loading.
 
 ---
 
-## Goal
+## 🎯 Goal
 
 Provide a general-purpose browser scraping tool that lets users extract structured content from any webpage without writing scraping scripts, while remaining flexible enough to adapt to different site structures through custom selectors and saved rule profiles.
 
 ---
 
-## License
+## 📄 License
 
-MIT License — see [LICENSE](./LICENSE) for details.
+MIT - see [LICENSE](./LICENSE) for details.

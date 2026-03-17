@@ -3,6 +3,7 @@ import browser from 'webextension-polyfill';
 import type { ExtractedContent, CustomSelectors } from '../scraper/extractor';
 import { Preview } from './components/Preview';
 import { ExportButtons } from './components/ExportButtons';
+import { CleanModeToggle } from './components/CleanModeToggle';
 import { saveRule, getRuleForDomain } from '../storage/rules';
 
 type View = 'main' | 'preview' | 'export' | 'selectors' | 'batch' | 'batch-results';
@@ -83,6 +84,13 @@ export default function App() {
   }
 
   async function handleBatchScrape() {
+    // Request broad host access only when the user explicitly starts batch scraping
+    const granted = await browser.permissions.request({ origins: ['<all_urls>'] });
+    if (!granted) {
+      setStatus('error');
+      setErrorMsg('Host permission required for batch scraping');
+      return;
+    }
     const urls = batchUrls
       .split('\n')
       .map(url => url.trim())
@@ -102,11 +110,17 @@ export default function App() {
         setBatchProgress({ current: i + 1, total: urls.length });
 
         try {
-          // Open the URL in a new tab
-          const tab = await browser.tabs.create({ url, active: false });
-          
-          // Wait for the page to load
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          // Open the URL in a new tab and wait for it to load
+          const tab = await browser.tabs.create({ url: urls[i], active: false });
+          await new Promise<void>((resolve) => {
+            function listener(tabId: number, info: { status?: string }) {
+              if (tabId === tab.id && info.status === 'complete') {
+                browser.tabs.onUpdated.removeListener(listener);
+                resolve();
+              }
+            }
+            browser.tabs.onUpdated.addListener(listener);
+          });
           
           // Scrape the content
           const response = await browser.tabs.sendMessage(tab.id!, { 
@@ -206,6 +220,15 @@ export default function App() {
     setSelectorRows((prev) => prev.filter((_, i) => i !== idx));
   }
 
+  const statusColor = status === 'success' ? 'success' : status === 'error' ? 'danger' : 'warning';
+  const statusDot   = status === 'success' ? 'bg-success-500' : status === 'error' ? 'bg-danger-500' : 'bg-warning-400';
+  const statusText  = {
+    idle:    'Ready to scrape',
+    loading: 'Scraping…',
+    success: `Scraped: ${data?.title || 'page'}`,
+    error:   'Error: try again',
+  }[status];
+
   return (
     <div className="gradient-primary-subtle min-h-screen p-4" style={{ minWidth: 360, maxWidth: 420 }}>
       {/* Header */}
@@ -237,20 +260,7 @@ export default function App() {
       {view === 'main' && (
         <div className="space-y-4">
           {/* Clean Mode Toggle */}
-          <div className="card p-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={cleanMode}
-                onChange={(e) => setCleanMode(e.target.checked)}
-                className="w-4 h-4 text-primary-600 bg-secondary-100 border-secondary-300 rounded focus:ring-primary-500"
-              />
-              <div>
-                <p className="text-xs font-medium text-secondary-700">Clean Content Mode</p>
-                <p className="text-xs text-secondary-500">Remove ads, navigation, and noise elements</p>
-              </div>
-            </label>
-          </div>
+          <CleanModeToggle checked={cleanMode} onChange={setCleanMode} />
 
           <div className="card-luxe p-5 space-y-3">
             <h2 className="text-sm font-semibold text-secondary-700">Quick Scrape</h2>
@@ -294,21 +304,12 @@ export default function App() {
 
           {/* Status indicator */}
           <div className="card p-3">
-            <div className={`status-${status === 'success' ? 'success' : status === 'error' ? 'danger' : 'warning'}`}>
+            <div className={`status-${statusColor}`}>
               <div
-                className={`w-2.5 h-2.5 rounded-full ${
-                  status === 'success'
-                    ? 'bg-success-500'
-                    : status === 'error'
-                    ? 'bg-danger-500'
-                    : 'bg-warning-400'
-                }`}
+                className={`w-2.5 h-2.5 rounded-full ${statusDot}`}
               />
               <span className="text-xs font-medium">
-                {status === 'idle' && 'Ready to scrape'}
-                {status === 'loading' && 'Scraping…'}
-                {status === 'success' && `Scraped: ${data?.title || 'page'}`}
-                {status === 'error' && 'Error — try again'}
+                {statusText}
               </span>
             </div>
           </div>
@@ -348,20 +349,7 @@ export default function App() {
       {view === 'selectors' && (
         <div className="space-y-4">
           {/* Clean Mode Toggle */}
-          <div className="card p-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={cleanMode}
-                onChange={(e) => setCleanMode(e.target.checked)}
-                className="w-4 h-4 text-primary-600 bg-secondary-100 border-secondary-300 rounded focus:ring-primary-500"
-              />
-              <div>
-                <p className="text-xs font-medium text-secondary-700">Clean Content Mode</p>
-                <p className="text-xs text-secondary-500">Remove ads, navigation, and noise elements</p>
-              </div>
-            </label>
-          </div>
+          <CleanModeToggle checked={cleanMode} onChange={setCleanMode} />
 
           <div className="card-luxe p-4 space-y-3">
             <h2 className="text-sm font-semibold text-secondary-700">Custom CSS Selectors</h2>
@@ -442,20 +430,7 @@ export default function App() {
       {view === 'batch' && (
         <div className="space-y-4">
           {/* Clean Mode Toggle */}
-          <div className="card p-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={cleanMode}
-                onChange={(e) => setCleanMode(e.target.checked)}
-                className="w-4 h-4 text-primary-600 bg-secondary-100 border-secondary-300 rounded focus:ring-primary-500"
-              />
-              <div>
-                <p className="text-xs font-medium text-secondary-700">Clean Content Mode</p>
-                <p className="text-xs text-secondary-500">Remove ads, navigation, and noise elements</p>
-              </div>
-            </label>
-          </div>
+          <CleanModeToggle checked={cleanMode} onChange={setCleanMode} />
 
           <div className="card-luxe p-4 space-y-3">
             <h2 className="text-sm font-semibold text-secondary-700">Batch URL Scraper</h2>

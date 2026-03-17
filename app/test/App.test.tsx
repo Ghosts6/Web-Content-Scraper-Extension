@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 import App from '../src/popup/App';
 import browser from 'webextension-polyfill';
 
-// Mock browser APIs
 jest.mock('webextension-polyfill', () => ({
   runtime: {
     sendMessage: jest.fn(),
@@ -32,8 +31,6 @@ const mockBrowser = browser as jest.Mocked<typeof browser>;
 describe('App Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-
-    // Setup default mock responses
     mockBrowser.tabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
     mockBrowser.storage.sync.get.mockResolvedValue({});
     mockBrowser.runtime.sendMessage.mockResolvedValue({
@@ -53,8 +50,7 @@ describe('App Component', () => {
 
   test('renders header', () => {
     render(<App />);
-    const headerElement = screen.getByText(/Web Content Scraper/i);
-    expect(headerElement).toBeInTheDocument();
+    expect(screen.getByText(/Web Content Scraper/i)).toBeInTheDocument();
   });
 
   test('renders main view by default', () => {
@@ -65,35 +61,27 @@ describe('App Component', () => {
 
   test('toggles clean mode', async () => {
     render(<App />);
-    const cleanModeCheckbox = screen.getByRole('checkbox', { name: /clean content mode/i });
-
-    expect(cleanModeCheckbox).not.toBeChecked();
-
-    await userEvent.click(cleanModeCheckbox);
-    expect(cleanModeCheckbox).toBeChecked();
+    const checkbox = screen.getByRole('checkbox', { name: /clean content mode/i });
+    expect(checkbox).not.toBeChecked();
+    await userEvent.click(checkbox);
+    expect(checkbox).toBeChecked();
   });
 
   test('navigates to selectors view', async () => {
     render(<App />);
-    const selectorsButton = screen.getByText('🎯 Custom Selectors');
-
-    await userEvent.click(selectorsButton);
+    await userEvent.click(screen.getByText('🎯 Custom Selectors'));
     expect(screen.getByText('Custom CSS Selectors')).toBeInTheDocument();
   });
 
   test('navigates to batch view', async () => {
     render(<App />);
-    const batchButton = screen.getByText('📄 Batch Scrape');
-
-    await userEvent.click(batchButton);
+    await userEvent.click(screen.getByText('📄 Batch Scrape'));
     expect(screen.getByText('Batch URL Scraper')).toBeInTheDocument();
   });
 
-  test('handles scrape success', async () => {
+  test('handles scrape success and navigates to preview', async () => {
     render(<App />);
-    const scrapeButton = screen.getByText('⚡ Scrape Page');
-
-    await userEvent.click(scrapeButton);
+    await userEvent.click(screen.getByText('⚡ Scrape Page'));
 
     await waitFor(() => {
       expect(mockBrowser.runtime.sendMessage).toHaveBeenCalledWith({
@@ -101,15 +89,17 @@ describe('App Component', () => {
         cleanMode: false,
       });
     });
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Page')).toBeInTheDocument();
+    });
   });
 
-  test('handles scrape with clean mode enabled', async () => {
+  test('sends cleanMode: true when clean mode is enabled', async () => {
     render(<App />);
-    const cleanModeCheckbox = screen.getByRole('checkbox', { name: /clean content mode/i });
-    const scrapeButton = screen.getByText('⚡ Scrape Page');
-
-    await userEvent.click(cleanModeCheckbox);
-    await userEvent.click(scrapeButton);
+    const checkbox = screen.getByRole('checkbox', { name: /clean content mode/i });
+    await userEvent.click(checkbox);
+    await userEvent.click(screen.getByText('⚡ Scrape Page'));
 
     await waitFor(() => {
       expect(mockBrowser.runtime.sendMessage).toHaveBeenCalledWith({
@@ -119,34 +109,33 @@ describe('App Component', () => {
     });
   });
 
-  test('handles scrape error', async () => {
+  test('shows error message on scrape failure', async () => {
     mockBrowser.runtime.sendMessage.mockResolvedValueOnce({
       success: false,
       error: 'Scrape failed',
     });
 
     render(<App />);
-    const scrapeButton = screen.getByText('⚡ Scrape Page');
-
-    await userEvent.click(scrapeButton);
+    await userEvent.click(screen.getByText('⚡ Scrape Page'));
 
     await waitFor(() => {
       expect(screen.getByText('⚠ Scrape failed')).toBeInTheDocument();
     });
   });
 
-  test('loads domain rules on mount', async () => {
-    mockBrowser.storage.sync.get.mockResolvedValue({
-      'rule:example.com': {
-        domain: 'example.com',
-        selectors: { title: 'h1' },
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      },
-    });
+  test('shows error message on network failure', async () => {
+    mockBrowser.runtime.sendMessage.mockRejectedValueOnce(new Error('Network error'));
 
     render(<App />);
+    await userEvent.click(screen.getByText('⚡ Scrape Page'));
 
+    await waitFor(() => {
+      expect(screen.getByText('⚠ Network error')).toBeInTheDocument();
+    });
+  });
+
+  test('loads domain rules on mount', async () => {
+    render(<App />);
     await waitFor(() => {
       expect(mockBrowser.tabs.query).toHaveBeenCalled();
       expect(mockBrowser.storage.sync.get).toHaveBeenCalled();
@@ -155,49 +144,49 @@ describe('App Component', () => {
 
   test('handles domain rules loading error gracefully', async () => {
     mockBrowser.tabs.query.mockRejectedValueOnce(new Error('Browser API error'));
-    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
     render(<App />);
 
     await waitFor(() => {
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(warnSpy).toHaveBeenCalledWith(
         'Failed to load domain rules:',
         expect.any(Error)
       );
     });
-
-    consoleWarnSpy.mockRestore();
+    warnSpy.mockRestore();
   });
 
   describe('Custom Selectors View', () => {
-    test('adds and removes selector rows', async () => {
+    test('adds a new selector row', async () => {
       render(<App />);
       await userEvent.click(screen.getByText('🎯 Custom Selectors'));
+      await userEvent.click(screen.getByText('+ Add Field'));
+      expect(screen.getAllByPlaceholderText('field')).toHaveLength(2);
+    });
 
-      const addButton = screen.getByText('+ Add Field');
-      await userEvent.click(addButton);
-
+    test('removes a selector row', async () => {
+      render(<App />);
+      await userEvent.click(screen.getByText('🎯 Custom Selectors'));
+      await userEvent.click(screen.getByText('+ Add Field'));
       expect(screen.getAllByPlaceholderText('field')).toHaveLength(2);
 
       const removeButtons = screen.getAllByText('✕');
       await userEvent.click(removeButtons[1]);
-
       expect(screen.getAllByPlaceholderText('field')).toHaveLength(1);
     });
 
-    test('handles custom scrape with selectors', async () => {
+    test('scrapes with valid selectors', async () => {
       render(<App />);
       await userEvent.click(screen.getByText('🎯 Custom Selectors'));
 
       const fieldInput = screen.getByPlaceholderText('field');
       const selectorInput = screen.getByPlaceholderText('selector');
-      const scrapeButton = screen.getByText('⚡ Scrape with Selectors');
 
-      // Clear the existing 'title' value first
       await userEvent.clear(fieldInput);
       await userEvent.type(fieldInput, 'title');
       await userEvent.type(selectorInput, 'h1');
-      await userEvent.click(scrapeButton);
+      await userEvent.click(screen.getByText('⚡ Scrape with Selectors'));
 
       await waitFor(() => {
         expect(mockBrowser.runtime.sendMessage).toHaveBeenCalledWith({
@@ -208,34 +197,36 @@ describe('App Component', () => {
       });
     });
 
-    test('skips custom scrape with empty selectors', async () => {
+    test('does not scrape when selectors are empty', async () => {
       render(<App />);
       await userEvent.click(screen.getByText('🎯 Custom Selectors'));
 
-      const scrapeButton = screen.getByText('⚡ Scrape with Selectors');
-      await userEvent.click(scrapeButton);
+      // Clear the pre-filled field so selectors object is empty
+      const fieldInput = screen.getByPlaceholderText('field');
+      await userEvent.clear(fieldInput);
 
+      await userEvent.click(screen.getByText('⚡ Scrape with Selectors'));
       expect(mockBrowser.runtime.sendMessage).not.toHaveBeenCalled();
     });
 
-    test('saves rule for domain', async () => {
+    test('saves rule for current domain', async () => {
       render(<App />);
       await userEvent.click(screen.getByText('🎯 Custom Selectors'));
 
       const fieldInput = screen.getByPlaceholderText('field');
       const selectorInput = screen.getByPlaceholderText('selector');
-      const saveButton = screen.getByText('💾 Save Rule for Domain');
 
+      await userEvent.clear(fieldInput);
       await userEvent.type(fieldInput, 'title');
       await userEvent.type(selectorInput, 'h1');
-      await userEvent.click(saveButton);
+      await userEvent.click(screen.getByText('💾 Save Rule for Domain'));
 
       await waitFor(() => {
         expect(mockBrowser.storage.sync.set).toHaveBeenCalled();
       });
     });
 
-    test('handles rule save error', async () => {
+    test('shows error when rule save fails', async () => {
       mockBrowser.storage.sync.set.mockRejectedValueOnce(new Error('Storage error'));
 
       render(<App />);
@@ -243,16 +234,37 @@ describe('App Component', () => {
 
       const fieldInput = screen.getByPlaceholderText('field');
       const selectorInput = screen.getByPlaceholderText('selector');
-      const saveButton = screen.getByText('💾 Save Rule for Domain');
 
       await userEvent.clear(fieldInput);
       await userEvent.type(fieldInput, 'title');
       await userEvent.type(selectorInput, 'h1');
-      await userEvent.click(saveButton);
+      await userEvent.click(screen.getByText('💾 Save Rule for Domain'));
 
       await waitFor(() => {
         expect(screen.getByText(/Failed to save rule/)).toBeInTheDocument();
       });
+    });
+
+    test('accepts long selector strings', async () => {
+      render(<App />);
+      await userEvent.click(screen.getByText('🎯 Custom Selectors'));
+
+      const selectorInput = screen.getByPlaceholderText('selector');
+      const longSelector =
+        'body > div.container > main > article > h1.title[data-id="123"]';
+
+      fireEvent.change(selectorInput, { target: { value: longSelector } });
+      expect(selectorInput).toHaveValue(longSelector);
+    });
+
+    test('accepts special characters in field names', async () => {
+      render(<App />);
+      await userEvent.click(screen.getByText('🎯 Custom Selectors'));
+
+      const fieldInput = screen.getByPlaceholderText('field');
+      await userEvent.clear(fieldInput);
+      await userEvent.type(fieldInput, 'field_with-dashes');
+      expect(fieldInput).toHaveValue('field_with-dashes');
     });
   });
 
@@ -265,76 +277,29 @@ describe('App Component', () => {
       expect(screen.getByPlaceholderText(/https:\/\/example\.com\/page1/)).toBeInTheDocument();
     });
 
-    test('validates empty batch URLs', async () => {
+    test('start button is disabled when URLs textarea is empty', async () => {
       render(<App />);
       await userEvent.click(screen.getByText('📄 Batch Scrape'));
 
-      const startButton = screen.getByText('🚀 Start Batch Scrape');
-      expect(startButton).toBeDisabled();
+      expect(screen.getByText('🚀 Start Batch Scrape')).toBeDisabled();
     });
 
-    test('handles batch URL input', async () => {
-      render(<App />);
-      await userEvent.click(screen.getByText('📄 Batch Scrape'));
-
-      const textarea = screen.getByPlaceholderText(/https:\/\/example\.com\/page1/);
-      await userEvent.type(textarea, 'https://example.com/page1\nhttps://example.com/page2');
-
-      const startButton = screen.getByText('🚀 Start Batch Scrape');
-      expect(startButton).not.toBeDisabled();
-    });
-  });
-
-  describe('Edge Cases', () => {
-    test('handles network errors gracefully', async () => {
-      mockBrowser.runtime.sendMessage.mockRejectedValueOnce(new Error('Network error'));
-
-      render(<App />);
-      const scrapeButton = screen.getByText('⚡ Scrape Page');
-
-      await userEvent.click(scrapeButton);
-
-      await waitFor(() => {
-        expect(screen.getByText('⚠ Network error')).toBeInTheDocument();
-      });
-    });
-
-    test('handles malformed URLs in batch input', async () => {
+    test('start button is enabled after typing URLs', async () => {
       render(<App />);
       await userEvent.click(screen.getByText('📄 Batch Scrape'));
 
       const textarea = screen.getByPlaceholderText(/https:\/\/example\.com\/page1/);
-      await userEvent.type(textarea, 'not-a-url\nhttps://valid.com');
+      await userEvent.type(textarea, 'https://example.com/page1');
 
-      // Should still allow processing (validation happens on backend)
-      const startButton = screen.getByText('🚀 Start Batch Scrape');
-      expect(startButton).not.toBeDisabled();
+      expect(screen.getByText('🚀 Start Batch Scrape')).not.toBeDisabled();
     });
 
-    test('handles very long selector strings', async () => {
+    test('back button returns to main view', async () => {
       render(<App />);
-      await userEvent.click(screen.getByText('🎯 Custom Selectors'));
+      await userEvent.click(screen.getByText('📄 Batch Scrape'));
+      await userEvent.click(screen.getByText('← Back'));
 
-      const selectorInput = screen.getByPlaceholderText('selector');
-      const longSelector =
-        'body > div.container > main > article.post > header > h1.title.class1.class2.class3[data-attribute="value"]';
-
-      fireEvent.change(selectorInput, { target: { value: longSelector } });
-
-      expect(selectorInput).toHaveValue(longSelector);
-    });
-
-    test('handles special characters in field names', async () => {
-      render(<App />);
-      await userEvent.click(screen.getByText('🎯 Custom Selectors'));
-
-      const fieldInput = screen.getByPlaceholderText('field');
-
-      // Clear the existing 'title' value first
-      await userEvent.clear(fieldInput);
-      await userEvent.type(fieldInput, 'field_with_underscores-and-dashes');
-
-      expect(fieldInput).toHaveValue('field_with_underscores-and-dashes');
+      expect(screen.getByText('Quick Scrape')).toBeInTheDocument();
     });
   });
 });

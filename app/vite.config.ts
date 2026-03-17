@@ -10,6 +10,9 @@ const generateManifest = (browser: string) => {
     name: 'Web Content Scraper',
     version: '1.0',
     description: 'Extract structured content from any webpage',
+    content_security_policy: {
+      extension_pages: "script-src 'self'; object-src 'self'",
+    },
     action: {
       default_popup: 'popup.html',
     },
@@ -25,7 +28,8 @@ const generateManifest = (browser: string) => {
       '48': 'icons/icon48x48.png',
       '128': 'icons/icon128x128.png',
     },
-    permissions: ['activeTab', 'scripting', 'storage'],
+    permissions: ['activeTab', 'scripting', 'storage', 'tabs'],
+    optional_permissions: ['<all_urls>'],
   };
 
   if (browser === 'firefox') {
@@ -36,7 +40,8 @@ const generateManifest = (browser: string) => {
       },
       browser_specific_settings: {
         gecko: {
-          id: 'scraper@example.com', // Example ID
+          id: 'kiarash82.42@gmail.com',   // AMO account email
+          strict_min_version: '109.0',
         },
       },
     };

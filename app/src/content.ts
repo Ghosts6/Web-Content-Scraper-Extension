@@ -100,36 +100,6 @@ function deactivatePicker(): void {
   document.body.style.cursor = '';
 }
 
-// ─── Clean Mode ───────────────────────────────────────────────────────────────
-
-const NOISE_SELECTORS = [
-  'script',
-  'style',
-  'noscript',
-  'iframe',
-  'nav',
-  'header',
-  'footer',
-  'aside',
-  '[role="banner"]',
-  '[role="navigation"]',
-  '[role="complementary"]',
-  '[role="contentinfo"]',
-  '.ad',
-  '.ads',
-  '.advertisement',
-  '.sidebar',
-  '.cookie-banner',
-];
-
-function cloneClean(): Document {
-  const clone = document.cloneNode(true) as Document;
-  NOISE_SELECTORS.forEach((sel) => {
-    clone.querySelectorAll(sel).forEach((el) => el.remove());
-  });
-  return clone;
-}
-
 // ─── Message Handler ─────────────────────────────────────────────────────────
 
 browser.runtime.onMessage.addListener((message: unknown): Promise<unknown> => {
