@@ -31,9 +31,9 @@ export interface CustomExtractedContent {
   [fieldName: string]: string | string[];
 }
 
-// ─── Clean Mode ───────────────────────────────────────────────────────────────
+//  Clean Mode 
 
-const NOISE_SELECTORS = [
+export const DEFAULT_NOISE_SELECTORS = [
   'script',
   'style',
   'noscript',
@@ -53,10 +53,15 @@ const NOISE_SELECTORS = [
   '.cookie-banner',
 ];
 
-function cloneClean(): Document {
+function cloneClean(noiseSelectors: string[] = DEFAULT_NOISE_SELECTORS): Document {
   const clone = document.cloneNode(true) as Document;
-  NOISE_SELECTORS.forEach((sel) => {
-    clone.querySelectorAll(sel).forEach((el) => el.remove());
+  noiseSelectors.forEach((sel) => {
+    try {
+      clone.querySelectorAll(sel).forEach((el) => el.remove());
+    } catch (e) {
+      // Invalid selector, skip silently
+      console.debug(`Invalid noise selector: ${sel}`);
+    }
   });
   return clone;
 }
@@ -72,8 +77,8 @@ function getText(el: Element): string {
 /**
  * Extracts structured content from the current document using default selectors.
  */
-export function extractPageContent(cleanMode = false): ExtractedContent {
-  const doc = cleanMode ? cloneClean() : document;
+export function extractPageContent(cleanMode = false, noiseSelectors?: string[]): ExtractedContent {
+  const doc = cleanMode ? cloneClean(noiseSelectors) : document;
   const title = document.title ?? '';
 
   const metadata: ExtractedContent['metadata'] = {};
@@ -140,9 +145,10 @@ export function extractPageContent(cleanMode = false): ExtractedContent {
  */
 export function extractWithSelectors(
   selectors: CustomSelectors,
-  cleanMode = false
+  cleanMode = false,
+  noiseSelectors?: string[]
 ): CustomExtractedContent {
-  const doc = cleanMode ? cloneClean() : document;
+  const doc = cleanMode ? cloneClean(noiseSelectors) : document;
   const result: CustomExtractedContent = {};
 
   for (const [fieldName, selector] of Object.entries(selectors)) {

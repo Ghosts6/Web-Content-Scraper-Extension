@@ -8,7 +8,7 @@ const generateManifest = (browser: string) => {
   const baseManifest = {
     manifest_version: 3,
     name: 'Web Content Scraper',
-    version: '1.0',
+    version: '1.0.0',
     description: 'Extract structured content from any webpage',
     content_security_policy: {
       extension_pages: "script-src 'self'; object-src 'self'",
@@ -29,7 +29,7 @@ const generateManifest = (browser: string) => {
       '128': 'icons/icon128x128.png',
     },
     permissions: ['activeTab', 'scripting', 'storage', 'tabs'],
-    optional_permissions: ['<all_urls>'],
+    host_permissions: ['<all_urls>'],
   };
 
   if (browser === 'firefox') {

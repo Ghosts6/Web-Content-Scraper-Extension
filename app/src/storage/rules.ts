@@ -34,7 +34,7 @@ const DEFAULT_PREFS: UserPreferences = {
   cleanMode: false,
 };
 
-// ─── Site Rules ───────────────────────────────────────────────────────────────
+// Site Rules 
 
 export async function saveRule(rule: Omit<SiteRule, 'createdAt' | 'updatedAt'>): Promise<void> {
   const key = RULES_PREFIX + rule.domain;
@@ -43,7 +43,7 @@ export async function saveRule(rule: Omit<SiteRule, 'createdAt' | 'updatedAt'>):
   const entry: SiteRule = {
     ...rule,
     createdAt: existing?.createdAt ?? now,
-    updatedAt: now,
+    updatedAt: existing ? Math.max(existing.updatedAt + 1, now) : now,
   };
   await browser.storage.sync.set({ [key]: entry });
 }
@@ -88,7 +88,7 @@ export async function getRuleForDomain(hostname: string): Promise<SiteRule | nul
   return rule;
 }
 
-// ─── User Preferences ────────────────────────────────────────────────────────
+// User Preferences 
 
 export async function savePreferences(prefs: Partial<UserPreferences>): Promise<void> {
   const current = await getPreferences();

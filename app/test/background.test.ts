@@ -62,7 +62,7 @@ describe('Background Script', () => {
       const result = await handleMessage({ action: 'get-current-tab' });
 
       expect(browser.tabs.query).toHaveBeenCalledWith({ active: true, currentWindow: true });
-      expect(result).toEqual(mockTab);
+      expect(result).toEqual({ success: true, data: mockTab });
     });
 
     test('handles get-all-tabs message', async () => {
@@ -75,41 +75,55 @@ describe('Background Script', () => {
       const result = await handleMessage({ action: 'get-all-tabs' });
 
       expect(browser.tabs.query).toHaveBeenCalledWith({});
-      expect(result).toEqual(mockTabs);
+      expect(result).toEqual({ success: true, data: mockTabs });
     });
 
-    test('returns undefined for unknown action', async () => {
-      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    test('returns error for unknown action', async () => {
       const result = await handleMessage({ action: 'unknown-type' });
-      expect(result).toBeUndefined();
-      expect(warnSpy).toHaveBeenCalledWith('Unknown message action:', 'unknown-type');
-      warnSpy.mockRestore();
+      expect(result).toEqual({
+        success: false,
+        error: 'Unknown action: unknown-type',
+        errorCode: 'UNKNOWN_ACTION',
+      });
     });
   });
 
   describe('Error Handling', () => {
-    test('propagates tab sendMessage errors', async () => {
+    test('handles tab sendMessage errors', async () => {
       const mockTab = { id: 1, url: 'https://example.com' };
 
       browser.tabs.sendMessage.mockRejectedValueOnce(new Error('Tab not found'));
       browser.tabs.query.mockResolvedValueOnce([mockTab]);
       browser.scripting.executeScript.mockResolvedValueOnce([]);
 
-      await expect(handleMessage({ action: 'scrape', cleanMode: false })).rejects.toThrow(
-        'Tab not found'
-      );
+      const result = await handleMessage({ action: 'scrape', cleanMode: false });
+      expect(result).toEqual({
+        success: false,
+        error: 'Failed to scrape: Tab not found',
+        errorCode: 'CONTENT_SCRIPT_ERROR',
+      });
     });
 
     test('propagates tab query errors', async () => {
       browser.tabs.query.mockRejectedValueOnce(new Error('Query failed'));
 
-      await expect(handleMessage({ action: 'get-current-tab' })).rejects.toThrow('Query failed');
+      const result = await handleMessage({ action: 'get-current-tab' });
+      expect(result).toEqual({
+        success: false,
+        error: 'Query failed',
+        errorCode: 'INTERNAL_ERROR',
+      });
     });
 
-    test('throws when no active tab found', async () => {
+    test('handles missing active tab', async () => {
       browser.tabs.query.mockResolvedValueOnce([]);
 
-      await expect(handleMessage({ action: 'get-current-tab' })).rejects.toThrow('Tab not found');
+      const result = await handleMessage({ action: 'get-current-tab' });
+      expect(result).toEqual({
+        success: false,
+        error: 'No active tab found',
+        errorCode: 'NO_ACTIVE_TAB',
+      });
     });
 
     test('handles scrape with missing cleanMode', async () => {
@@ -124,30 +138,59 @@ describe('Background Script', () => {
 
   describe('Message Validation', () => {
     test('handles messages without action field', async () => {
-      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
       const result = await handleMessage({ data: { tabId: 1 } });
-      expect(result).toBeUndefined();
-      expect(warnSpy).toHaveBeenCalledWith(
-        'Received malformed or null message:',
-        expect.objectContaining({ data: { tabId: 1 } })
-      );
-      warnSpy.mockRestore();
+      expect(result).toEqual({
+        success: false,
+        error: 'Invalid message format',
+        errorCode: 'INVALID_MESSAGE',
+      });
     });
 
     test('handles null message', async () => {
-      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
       const result = await handleMessage(null);
-      expect(result).toBeUndefined();
-      expect(warnSpy).toHaveBeenCalledWith('Received malformed or null message:', null);
-      warnSpy.mockRestore();
+      expect(result).toEqual({
+        success: false,
+        error: 'Invalid message format',
+        errorCode: 'INVALID_MESSAGE',
+      });
     });
 
     test('handles undefined message', async () => {
-      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
       const result = await handleMessage(undefined);
-      expect(result).toBeUndefined();
-      expect(warnSpy).toHaveBeenCalledWith('Received malformed or null message:', undefined);
-      warnSpy.mockRestore();
+      expect(result).toEqual({
+        success: false,
+        error: 'Invalid message format',
+        errorCode: 'INVALID_MESSAGE',
+      });
+    });
+  });
+
+  describe('Message Validation', () => {
+    test('handles messages without action field', async () => {
+      const result = await handleMessage({ data: { tabId: 1 } });
+      expect(result).toEqual({
+        success: false,
+        error: 'Invalid message format',
+        errorCode: 'INVALID_MESSAGE',
+      });
+    });
+
+    test('handles null message', async () => {
+      const result = await handleMessage(null);
+      expect(result).toEqual({
+        success: false,
+        error: 'Invalid message format',
+        errorCode: 'INVALID_MESSAGE',
+      });
+    });
+
+    test('handles undefined message', async () => {
+      const result = await handleMessage(undefined);
+      expect(result).toEqual({
+        success: false,
+        error: 'Invalid message format',
+        errorCode: 'INVALID_MESSAGE',
+      });
     });
 
     test('handles valid scrape message structure', async () => {

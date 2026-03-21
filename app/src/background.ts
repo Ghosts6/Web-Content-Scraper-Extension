@@ -5,8 +5,10 @@ export type MessageType =
   | { action: 'scrape'; cleanMode?: boolean }
   | { action: 'scrapeWithSelectors'; selectors: Record<string, string>; cleanMode?: boolean }
   | { action: 'activatePicker' }
+  | { action: 'deactivatePicker' }
   | { action: 'scraped'; data: unknown }
   | { action: 'pickerSelector'; selector: string }
+  | { action: 'setPickerTarget'; idx: number }
   | { action: 'error'; message: string }
   | { action: 'get-current-tab' }
   | { action: 'get-all-tabs' }
@@ -22,21 +24,43 @@ export type MessageType =
  * Returns the response from the content script.
  */
 async function sendToActiveTab(message: MessageType): Promise<unknown> {
-  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id) throw new Error('No active tab found');
+  let tab;
 
-  // Ensure content script is injected (idempotent for already-injected tabs)
   try {
-    await browser.scripting.executeScript({
-      target: { tabId: tab.id },
-      files: ['content.js'],
-    });
-  } catch (e) {
-    // Already injected or CSP blocked — proceed anyway
-    console.warn("Failed to inject content script, likely already injected or CSP issues:", e);
-  }
+    const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+    [tab] = tabs;
 
-  return browser.tabs.sendMessage(tab.id, message);
+    if (!tab?.id) {
+      return {
+        success: false,
+        error: 'No active tab found. Please open a webpage first.',
+        errorCode: 'NO_ACTIVE_TAB',
+      };
+    }
+
+    // Ensure content script is injected (idempotent for already-injected tabs)
+    try {
+      await browser.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['src/content.js'],
+      });
+    } catch (e) {
+      // Already injected or CSP blocked — proceed anyway
+      console.debug("Content script injection skipped:", e);
+    }
+
+    const result = await browser.tabs.sendMessage(tab.id, message);
+    return result;
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('Error communicating with content script:', errorMsg);
+
+    return {
+      success: false,
+      error: `Failed to scrape: ${errorMsg}`,
+      errorCode: 'CONTENT_SCRIPT_ERROR',
+    };
+  }
 }
 
 /**
@@ -46,58 +70,124 @@ export async function handleMessage(message: unknown): Promise<unknown> {
   // Initial validation for message structure
   if (!message || typeof (message as MessageType).action !== 'string') {
     console.warn('Received malformed or null message:', message);
-    return undefined;
+    return {
+      success: false,
+      error: 'Invalid message format',
+      errorCode: 'INVALID_MESSAGE',
+    };
   }
 
   const msg = message as MessageType;
 
-  switch (msg.action) {
-    case 'scrape':
-      return sendToActiveTab({ action: 'scrape', cleanMode: msg.cleanMode });
+  try {
+    switch (msg.action) {
+      case 'scrape':
+        return sendToActiveTab({ action: 'scrape', cleanMode: msg.cleanMode });
 
-    case 'scrapeWithSelectors':
-      return sendToActiveTab({
-        action: 'scrapeWithSelectors',
-        selectors: msg.selectors,
-        cleanMode: msg.cleanMode,
-      });
+      case 'scrapeWithSelectors':
+        return sendToActiveTab({
+          action: 'scrapeWithSelectors',
+          selectors: msg.selectors,
+          cleanMode: msg.cleanMode,
+        });
 
-    case 'activatePicker':
-      return sendToActiveTab({ action: 'activatePicker' });
+      case 'activatePicker':
+        return sendToActiveTab({ action: 'activatePicker' });
 
-    case 'get-current-tab':
-      const [currentTab] = await browser.tabs.query({ active: true, currentWindow: true });
-      if (!currentTab) throw new Error('Tab not found');
-      return currentTab;
+      case 'deactivatePicker':
+        return sendToActiveTab({ action: 'deactivatePicker' });
 
-    case 'get-all-tabs':
-      const allTabs = await browser.tabs.query({});
-      return allTabs;
+      case 'setPickerTarget':
+        await browser.storage.local.set({ pickerTargetIdx: msg.idx });
+        return { success: true };
 
-    case 'save-rule':
-      await saveRule(msg.rule);
-      return { success: true };
+      case 'pickerSelector':
+        const stored = await browser.storage.local.get(['pickerTargetIdx']);
+        const idx = stored.pickerTargetIdx;
+        if (typeof idx === 'number') {
+          await browser.storage.local.set({ pickedSelector: msg.selector, pickedIdx: idx });
+        }
+        return { success: true };
 
-    case 'get-rule':
-      return getRule(msg.domain);
+      case 'get-current-tab': {
+        const [currentTab] = await browser.tabs.query({ active: true, currentWindow: true });
+        if (!currentTab) {
+          return {
+            success: false,
+            error: 'No active tab found',
+            errorCode: 'NO_ACTIVE_TAB',
+          };
+        }
+        return { success: true, data: currentTab };
+      }
 
-    case 'get-all-rules':
-      return getAllRules();
+      case 'get-all-tabs': {
+        const allTabs = await browser.tabs.query({});
+        return { success: true, data: allTabs };
+      }
 
-    case 'delete-rule':
-      await deleteRule(msg.domain);
-      return { success: true };
+      case 'save-rule':
+        try {
+          await saveRule(msg.rule);
+          return { success: true, message: `Rule saved for ${msg.rule.domain}` };
+        } catch (error) {
+          const err = error instanceof Error ? error.message : String(error);
+          return { success: false, error: `Failed to save rule: ${err}` };
+        }
 
-    case 'save-preferences':
-      await savePreferences(msg.preferences);
-      return { success: true };
+      case 'get-rule':
+        try {
+          const rule = await getRule(msg.domain);
+          return { success: true, data: rule };
+        } catch (error) {
+          const err = error instanceof Error ? error.message : String(error);
+          return { success: false, error: `Failed to get rule: ${err}` };
+        }
 
-    case 'get-preferences':
-      return getPreferences();
+      case 'get-all-rules': {
+        const rules = await getAllRules();
+        return { success: true, data: rules };
+      }
 
-    default:
-      console.warn('Unknown message action:', msg.action);
-      return undefined;
+      case 'delete-rule':
+        try {
+          await deleteRule(msg.domain);
+          return { success: true, message: `Rule deleted for ${msg.domain}` };
+        } catch (error) {
+          const err = error instanceof Error ? error.message : String(error);
+          return { success: false, error: `Failed to delete rule: ${err}` };
+        }
+
+      case 'save-preferences':
+        try {
+          await savePreferences(msg.preferences);
+          return { success: true, message: 'Preferences saved' };
+        } catch (error) {
+          const err = error instanceof Error ? error.message : String(error);
+          return { success: false, error: `Failed to save preferences: ${err}` };
+        }
+
+      case 'get-preferences': {
+        const prefs = await getPreferences();
+        return { success: true, data: prefs };
+      }
+
+      default:
+        console.warn('Unknown message action:', msg.action);
+        return {
+          success: false,
+          error: `Unknown action: ${msg.action}`,
+          errorCode: 'UNKNOWN_ACTION',
+        };
+    }
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('Error handling message:', errorMsg);
+    return {
+      success: false,
+      error: errorMsg,
+      errorCode: 'INTERNAL_ERROR',
+    };
   }
 }
 
