@@ -1,5 +1,6 @@
 import browser from 'webextension-polyfill';
 import { saveRule, getRule, getAllRules, deleteRule, savePreferences, getPreferences, SiteRule, UserPreferences } from './storage/rules';
+import { batchScrape, smartBatchScrape, type BatchScrapeRequest, type BatchScrapeResult } from './scraper/batch-scraper';
 
 export type MessageType =
   | { action: 'scrape'; cleanMode?: boolean }
@@ -17,7 +18,9 @@ export type MessageType =
   | { action: 'get-all-rules' }
   | { action: 'delete-rule'; domain: string }
   | { action: 'save-preferences'; preferences: Partial<UserPreferences> }
-  | { action: 'get-preferences' };
+  | { action: 'get-preferences' }
+  | { action: 'batch-scrape'; request: BatchScrapeRequest }
+  | { action: 'smart-batch-scrape'; request: BatchScrapeRequest };
 
 /**
  * Injects the content script into the active tab and then sends it a message.
@@ -171,6 +174,24 @@ export async function handleMessage(message: unknown): Promise<unknown> {
         const prefs = await getPreferences();
         return { success: true, data: prefs };
       }
+
+      case 'batch-scrape':
+        try {
+          const results = await batchScrape(msg.request);
+          return { success: true, data: results };
+        } catch (error) {
+          const err = error instanceof Error ? error.message : String(error);
+          return { success: false, error: `Batch scraping failed: ${err}` };
+        }
+
+      case 'smart-batch-scrape':
+        try {
+          const results = await smartBatchScrape(msg.request);
+          return { success: true, data: results };
+        } catch (error) {
+          const err = error instanceof Error ? error.message : String(error);
+          return { success: false, error: `Smart batch scraping failed: ${err}` };
+        }
 
       default:
         console.warn('Unknown message action:', msg.action);

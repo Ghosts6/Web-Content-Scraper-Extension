@@ -10,6 +10,37 @@ global.URL = class URL {
   hostname: string;
 };
 
+// Mock fetch
+global.fetch = jest.fn().mockImplementation((url: string) => {
+  return Promise.resolve({
+    ok: true,
+    url: url,
+    text: () => Promise.resolve(`
+      <html>
+        <head><title>Test Page</title></head>
+        <body>
+          <h1>Test Heading</h1>
+          <p>Test paragraph</p>
+          <a href="https://example.com">Test Link</a>
+        </body>
+      </html>
+    `),
+  });
+});
+
+// Mock DOMParser
+global.DOMParser = class DOMParser {
+  parseFromString(html: string) {
+    // Simple mock implementation
+    return {
+      title: html.includes('<title>') ? html.split('<title>')[1].split('</title>')[0] : '',
+      querySelector: jest.fn(),
+      querySelectorAll: jest.fn(() => []),
+      cloneNode: jest.fn(() => ({ querySelectorAll: jest.fn(() => []) })),
+    };
+  }
+};
+
 // Define a basic global browser mock
 (global as any).browser = {
   runtime: {

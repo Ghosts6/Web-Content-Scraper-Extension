@@ -88,7 +88,7 @@ describe('App Component', () => {
 
   test('navigates to batch view', async () => {
     render(<App />);
-    await userEvent.click(screen.getByText('Batch Scrape'));
+    await userEvent.click(screen.getByText('Batch'));
     expect(screen.getByText('Batch Scraper')).toBeInTheDocument();
   });
 
@@ -300,20 +300,20 @@ describe('App Component', () => {
   describe('Batch Scraping', () => {
     test('renders batch input form', async () => {
       render(<App />);
-      await userEvent.click(screen.getByText('Batch Scrape'));
+      await userEvent.click(screen.getByText('Batch'));
       expect(screen.getByText('Batch Scraper')).toBeInTheDocument();
       expect(screen.getByPlaceholderText(/https:\/\/example\.com\/page1/)).toBeInTheDocument();
     });
 
     test('start button is disabled when URLs textarea is empty', async () => {
       render(<App />);
-      await userEvent.click(screen.getByText('Batch Scrape'));
+      await userEvent.click(screen.getByText('Batch'));
       expect(screen.getByText('Start Batch Scrape')).toBeDisabled();
     });
 
     test('start button enables after typing URLs', async () => {
       render(<App />);
-      await userEvent.click(screen.getByText('Batch Scrape'));
+      await userEvent.click(screen.getByText('Batch'));
       const textarea = screen.getByPlaceholderText(/https:\/\/example\.com\/page1/);
       await userEvent.type(textarea, 'https://example.com/page1');
       expect(screen.getByText('Start Batch Scrape')).not.toBeDisabled();
@@ -321,7 +321,7 @@ describe('App Component', () => {
 
     test('back button returns to main view', async () => {
       render(<App />);
-      await userEvent.click(screen.getByText('Batch Scrape'));
+      await userEvent.click(screen.getByText('Batch'));
       await userEvent.click(screen.getByText('← Back'));
       expect(screen.getByText('Quick Scrape')).toBeInTheDocument();
     });

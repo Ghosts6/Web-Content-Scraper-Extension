@@ -12,6 +12,7 @@ interface MainViewProps {
   onScrape: () => void;
   onViewSelectors: () => void;
   onViewBatch: () => void;
+  onViewSettings: () => void;
   onViewPreview: () => void;
   onViewExport: () => void;
 }
@@ -24,6 +25,7 @@ export function MainView({
   onScrape,
   onViewSelectors,
   onViewBatch,
+  onViewSettings,
   onViewPreview,
   onViewExport,
 }: MainViewProps) {
@@ -59,12 +61,15 @@ export function MainView({
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
         <button className="lift-btn" onClick={onViewSelectors} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 10px', borderRadius: 8, border: '1px solid rgba(99,102,241,0.22)', background: 'rgba(99,102,241,0.05)', color: '#4f46e5', fontSize: 11, fontWeight: 600, cursor: 'pointer', letterSpacing: '0.01em' }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></svg> Selectors
         </button>
         <button className="lift-btn" onClick={onViewBatch} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 10px', borderRadius: 8, border: '1px solid rgba(100,116,139,0.2)', background: 'rgba(241,245,249,0.9)', color: '#475569', fontSize: 11, fontWeight: 600, cursor: 'pointer', letterSpacing: '0.01em' }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></svg> Batch Scrape
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></svg> Batch
+        </button>
+        <button className="lift-btn" onClick={onViewSettings} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 10px', borderRadius: 8, border: '1px solid rgba(34,197,94,0.22)', background: 'rgba(34,197,94,0.05)', color: '#15803d', fontSize: 11, fontWeight: 600, cursor: 'pointer', letterSpacing: '0.01em' }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" /></svg> Settings
         </button>
       </div>
 

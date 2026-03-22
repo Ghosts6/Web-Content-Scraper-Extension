@@ -27,11 +27,37 @@ const PREFS_KEY = 'user_prefs';
 export interface UserPreferences {
   defaultFormat: 'json' | 'xml' | 'markdown' | 'text';
   cleanMode: boolean;
+  noiseSelectors: string[];
+  batchTimeout: number;
+  batchMaxRetries: number;
+  batchConcurrency: number;
 }
 
 const DEFAULT_PREFS: UserPreferences = {
   defaultFormat: 'json',
   cleanMode: false,
+  noiseSelectors: [
+    'script',
+    'style',
+    'noscript',
+    'iframe',
+    'nav',
+    'header',
+    'footer',
+    'aside',
+    '[role="banner"]',
+    '[role="navigation"]',
+    '[role="complementary"]',
+    '[role="contentinfo"]',
+    '.ad',
+    '.ads',
+    '.advertisement',
+    '.sidebar',
+    '.cookie-banner',
+  ],
+  batchTimeout: 30000,
+  batchMaxRetries: 3,
+  batchConcurrency: 5,
 };
 
 // Site Rules 

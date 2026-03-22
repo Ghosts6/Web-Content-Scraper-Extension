@@ -8,6 +8,7 @@ import { SelectorsView } from './components/SelectorsView';
 import { RulesView } from './components/RulesView';
 import { BatchView } from './components/BatchView';
 import { BatchResultsView } from './components/BatchResultsView';
+import { SettingsView } from './components/SettingsView';
 import {
   saveRule, getRuleForDomain, getAllRules, deleteRule,
   getPreferences, savePreferences,
@@ -15,8 +16,9 @@ import {
 import type { SiteRule } from '../storage/rules';
 import { toXML, toMarkdown, toPlainText, getMimeType, getFileExtension } from '../scraper/formatter';
 import type { ExportFormat } from '../scraper/formatter';
+import type { BatchScrapeResult } from '../scraper/batch-scraper';
 
-type View = 'main' | 'preview' | 'export' | 'selectors' | 'rules' | 'batch' | 'batch-results';
+type View = 'main' | 'preview' | 'export' | 'selectors' | 'rules' | 'batch' | 'batch-results' | 'settings';
 type Status = 'idle' | 'loading' | 'success' | 'error';
 
 // Batch export helpers
@@ -200,37 +202,53 @@ export default function App() {
   async function handleBatchScrape() {
     const urls = batchUrls.split('\n').map(u => u.trim()).filter(u => u.startsWith('http'));
     if (urls.length === 0) return;
-    setStatus('loading'); setBatchResults([]); setBatchProgress({ current: 0, total: urls.length });
-    const results: ExtractedContent[] = [];
+
+    setStatus('loading');
+    setBatchResults([]);
+    setBatchProgress({ current: 0, total: urls.length });
+
     try {
-      for (let i = 0; i < urls.length; i++) {
-        setBatchProgress({ current: i + 1, total: urls.length });
-        try {
-          const tab = await browser.tabs.create({ url: urls[i], active: false });
-          await new Promise<void>((resolve, reject) => {
-            const timer = setTimeout(() => {
-              browser.tabs.onUpdated.removeListener(listener);
-              reject(new Error(`Timed out: ${urls[i]}`));
-            }, 30_000);
-            function listener(tabId: number, info: { status?: string }) {
-              if (tabId === tab.id && info.status === 'complete') {
-                browser.tabs.onUpdated.removeListener(listener);
-                clearTimeout(timer);
-                resolve();
-              }
-            }
-            browser.tabs.onUpdated.addListener(listener);
-          });
-          const response = await browser.tabs.sendMessage(tab.id!, { action: 'scrape', cleanMode }) as
-            { success: true; data: ExtractedContent } | { success: false; error: string };
-          if (response.success) results.push(response.data);
-          await browser.tabs.remove(tab.id!);
-        } catch (e) { console.warn(`Failed to scrape ${urls[i]}:`, e); }
+      // Get user preferences for batch settings
+      const prefsResponse = await browser.runtime.sendMessage({ action: 'get-preferences' });
+      if (!prefsResponse.success) {
+        throw new Error('Failed to load preferences');
       }
-      setBatchResults(results); setStatus('success'); setView('batch-results');
-    } catch {
-      setStatus('error'); setErrorMsg('Batch scraping failed');
-    } finally { setBatchProgress(null); }
+
+      const prefs = prefsResponse.data;
+
+      // Use smart batch scrape which applies site-specific rules
+      const response = await browser.runtime.sendMessage({
+        action: 'smart-batch-scrape',
+        request: {
+          urls,
+          cleanMode,
+          noiseSelectors: prefs.noiseSelectors,
+          timeout: prefs.batchTimeout,
+          maxRetries: prefs.batchMaxRetries,
+          concurrency: prefs.batchConcurrency,
+        }
+      });
+
+      if (response.success) {
+        // Filter successful results
+        const rawResults = response.data as BatchScrapeResult[];
+        const successfulResults: ExtractedContent[] = rawResults
+          .filter(result => result.success && result.data)
+          .map(result => result.data as ExtractedContent);
+
+        setBatchResults(successfulResults);
+        setStatus('success');
+        setView('batch-results');
+      } else {
+        throw new Error(response.error || 'Batch scraping failed');
+      }
+    } catch (error) {
+      console.error('Batch scraping error:', error);
+      setStatus('error');
+      setErrorMsg(error instanceof Error ? error.message : 'Batch scraping failed');
+    } finally {
+      setBatchProgress(null);
+    }
   }
 
   async function handleActivatePicker(idx: number) {
@@ -354,6 +372,7 @@ export default function App() {
               onScrape={handleScrape}
               onViewSelectors={() => setView('selectors')}
               onViewBatch={() => setView('batch')}
+              onViewSettings={() => setView('settings')}
               onViewPreview={() => setView('preview')}
               onViewExport={() => setView('export')}
             />
@@ -427,6 +446,11 @@ export default function App() {
               onDownloadBatchResults={downloadBatchResults}
               onBack={() => setView('batch')}
             />
+          )}
+
+          {/*  SETTINGS  */}
+          {view === 'settings' && (
+            <SettingsView onBack={() => setView('main')} />
           )}
 
         </div>
