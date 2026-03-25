@@ -44,7 +44,7 @@ global.DOMParser = class DOMParser {
 // Define a basic global browser mock
 (global as any).browser = {
   runtime: {
-    sendMessage: jest.fn(),
+    sendMessage: jest.fn(() => Promise.resolve({ success: true })),
     onMessage: {
       addListener: jest.fn(),
       removeListener: jest.fn(),
@@ -52,32 +52,32 @@ global.DOMParser = class DOMParser {
     getURL: jest.fn(),
   },
   tabs: {
-    query: jest.fn(),
-    sendMessage: jest.fn(),
+    query: jest.fn(() => Promise.resolve([{ url: 'https://example.com', id: 1 }])),
+    sendMessage: jest.fn(() => Promise.resolve({ success: true })),
     create: jest.fn(),
     remove: jest.fn(),
     update: jest.fn(),
   },
   storage: {
     sync: {
-      get: jest.fn(),
-      set: jest.fn(),
-      clear: jest.fn(),
-      remove: jest.fn(),
+      get: jest.fn(() => Promise.resolve({})),
+      set: jest.fn(() => Promise.resolve()),
+      clear: jest.fn(() => Promise.resolve()),
+      remove: jest.fn(() => Promise.resolve()),
     },
     local: {
-      get: jest.fn(),
-      set: jest.fn(),
-      clear: jest.fn(),
-      remove: jest.fn(),
+      get: jest.fn(() => Promise.resolve({})),
+      set: jest.fn(() => Promise.resolve()),
+      clear: jest.fn(() => Promise.resolve()),
+      remove: jest.fn(() => Promise.resolve()),
     },
   },
   permissions: {
-    contains: jest.fn(),
-    request: jest.fn(),
+    contains: jest.fn(() => Promise.resolve(false)),
+    request: jest.fn(() => Promise.resolve(true)),
   },
   scripting: {
-    executeScript: jest.fn(),
+    executeScript: jest.fn(() => Promise.resolve()),
   },
 };
 

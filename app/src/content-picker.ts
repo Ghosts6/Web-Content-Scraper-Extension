@@ -10,6 +10,10 @@ let pickerActive = false;
 let highlightOverlay: HTMLDivElement | null = null;
 let pickerToolbar: HTMLDivElement | null = null;
 let selectedElement: Element | null = null;
+let onClickHandler: ((e: MouseEvent) => void) | null = null;
+let onMouseMoveHandler: ((e: MouseEvent) => void) | null = null;
+let onDoubleClickHandler: ((e: MouseEvent) => void) | null = null;
+let onContextMenuHandler: ((e: MouseEvent) => void) | null = null;
 
 const TOOLBAR_HEIGHT = 50;
 
@@ -152,11 +156,26 @@ function onMouseMove(e: MouseEvent): void {
 
 function onClick(e: MouseEvent): void {
   if (!pickerActive) return;
+  const target = e.target as Element;
+  // Don't select toolbar or overlay
+  if (target === highlightOverlay || target === pickerToolbar || pickerToolbar?.contains(target)) return;
   e.preventDefault();
   e.stopPropagation();
-  const target = e.target as Element;
   selectedElement = target;
   positionOverlay(target);
+}
+
+function onDoubleClick(e: MouseEvent): void {
+  if (!pickerActive) return;
+  e.preventDefault();
+  e.stopPropagation();
+}
+
+function onContextMenu(e: MouseEvent): void {
+  if (pickerActive) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
 }
 
 function confirmSelection(): void {
@@ -186,14 +205,17 @@ export function activatePicker(): void {
   highlightOverlay = createOverlay();
   pickerToolbar = createPickerToolbar();
 
-  // Prevent interaction with page elements
-  document.addEventListener('click', onClick, true);
-  document.addEventListener('mousemove', onMouseMove, true);
+  // Store handler references for cleanup
+  onClickHandler = onClick;
+  onMouseMoveHandler = onMouseMove;
+  onDoubleClickHandler = onDoubleClick;
+  onContextMenuHandler = onContextMenu;
 
-  // Prevent contextmenu
-  document.addEventListener('contextmenu', (e) => {
-    if (pickerActive) e.preventDefault();
-  }, true);
+  // Prevent interaction with page elements
+  document.addEventListener('click', onClickHandler, true);
+  document.addEventListener('mousemove', onMouseMoveHandler, true);
+  document.addEventListener('dblclick', onDoubleClickHandler, true);
+  document.addEventListener('contextmenu', onContextMenuHandler, true);
 }
 
 export function deactivatePicker(): void {
@@ -213,8 +235,16 @@ export function deactivatePicker(): void {
     pickerToolbar = null;
   }
 
-  document.removeEventListener('click', onClick, true);
-  document.removeEventListener('mousemove', onMouseMove, true);
+  // Remove event listeners using stored references
+  if (onClickHandler) document.removeEventListener('click', onClickHandler, true);
+  if (onMouseMoveHandler) document.removeEventListener('mousemove', onMouseMoveHandler, true);
+  if (onDoubleClickHandler) document.removeEventListener('dblclick', onDoubleClickHandler, true);
+  if (onContextMenuHandler) document.removeEventListener('contextmenu', onContextMenuHandler, true);
+
+  onClickHandler = null;
+  onMouseMoveHandler = null;
+  onDoubleClickHandler = null;
+  onContextMenuHandler = null;
 }
 
 export function isPickerActive(): boolean {

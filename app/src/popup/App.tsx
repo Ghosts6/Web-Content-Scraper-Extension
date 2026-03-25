@@ -138,9 +138,15 @@ export default function App() {
       for (const row of selectorRows) {
         if (row.field && row.selector) selectors[row.field] = row.selector;
       }
-      if (Object.keys(selectors).length === 0) return;
+      if (Object.keys(selectors).length === 0) {
+        setStatus('error');
+        setErrorMsg('Please select at least one element before saving');
+        setTimeout(() => setStatus('idle'), 3000);
+        return;
+      }
       await saveRule({ domain: url.hostname, selectors });
       setStatus('success');
+      setErrorMsg('Rule saved! You can reuse these selectors for this domain');
       setTimeout(() => setStatus('idle'), 2000);
     } catch {
       setStatus('error');
@@ -184,7 +190,12 @@ export default function App() {
     for (const row of selectorRows) {
       if (row.field && row.selector) selectors[row.field] = row.selector;
     }
-    if (Object.keys(selectors).length === 0) return;
+    if (Object.keys(selectors).length === 0) {
+      setStatus('error');
+      setErrorMsg('Please select at least one element using the selector tool');
+      setTimeout(() => setStatus('idle'), 3000);
+      return;
+    }
     setStatus('loading');
     try {
       const response = await browser.runtime.sendMessage({
