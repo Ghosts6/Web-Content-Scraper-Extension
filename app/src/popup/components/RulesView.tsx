@@ -5,10 +5,11 @@ import { SubHeader } from './SubHeader';
 interface RulesViewProps {
   savedRules: SiteRule[];
   onDeleteRule: (domain: string) => void;
+  onOpenSelectors: () => void;
   onBack: () => void;
 }
 
-export function RulesView({ savedRules, onDeleteRule, onBack }: RulesViewProps) {
+export function RulesView({ savedRules, onDeleteRule, onOpenSelectors, onBack }: RulesViewProps) {
   const ACCENT_STRIPS = [
     'linear-gradient(180deg, #6366f1, #818cf8)',
     'linear-gradient(180deg, #0891b2, #06b6d4)',
@@ -37,7 +38,7 @@ export function RulesView({ savedRules, onDeleteRule, onBack }: RulesViewProps) 
           <p style={{ fontSize: 10.5, color: '#94a3b8', margin: 0, lineHeight: 1.6 }}>
             Go to Selectors, define your fields,<br />then hit "Save Rule for Domain".
           </p>
-          <button className="lift-btn" onClick={() => {}} style={{
+          <button className="lift-btn" onClick={onOpenSelectors} style={{
             marginTop: 16, display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px',
             borderRadius: 8, border: '1px solid rgba(99,102,241,0.22)', background: 'rgba(99,102,241,0.05)',
             color: '#4f46e5', fontSize: 11, fontWeight: 600, cursor: 'pointer'

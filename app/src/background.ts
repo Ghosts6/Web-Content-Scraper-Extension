@@ -101,14 +101,21 @@ export async function handleMessage(message: unknown): Promise<unknown> {
         return sendToActiveTab({ action: 'deactivatePicker' });
 
       case 'setPickerTarget':
+        console.debug(`[Background] Setting pickerTargetIdx to ${msg.idx}`);
         await browser.storage.local.set({ pickerTargetIdx: msg.idx });
         return { success: true };
 
       case 'pickerSelector':
+        console.debug('[Background] Handling pickerSelector message');
         const stored = await browser.storage.local.get(['pickerTargetIdx']);
         const idx = stored.pickerTargetIdx;
         if (typeof idx === 'number') {
+          console.debug(`[Background] Saving pickedSelector "${msg.selector}" for index ${idx}`);
           await browser.storage.local.set({ pickedSelector: msg.selector, pickedIdx: idx });
+          // Clear the target index after successful pick to signal completion
+          await browser.storage.local.remove(['pickerTargetIdx']);
+        } else {
+          console.warn('[Background] pickerSelector received but no pickerTargetIdx found in storage');
         }
         return { success: true };
 

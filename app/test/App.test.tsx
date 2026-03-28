@@ -21,6 +21,15 @@ jest.mock('webextension-polyfill', () => ({
       set: jest.fn(),
       remove: jest.fn(),
     },
+    local: {
+      get: jest.fn(),
+      set: jest.fn(),
+      remove: jest.fn(),
+    },
+    onChanged: {
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+    },
   },
 }));
 
@@ -43,7 +52,18 @@ describe('App Component', () => {
     mockBrowser.tabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com' }]);
     // storage.sync.get returns empty object by default (no saved prefs/rules)
     mockBrowser.storage.sync.get.mockResolvedValue({});
-    mockBrowser.runtime.sendMessage.mockResolvedValue({ success: true, data: MOCK_DATA });
+    mockBrowser.storage.local.get.mockResolvedValue({});
+    
+    // Default mock response
+    mockBrowser.runtime.sendMessage.mockImplementation(async (msg) => {
+      if (msg.action === 'scrape') {
+        return { success: true, data: MOCK_DATA };
+      }
+      if (msg.action === 'scrapeWithSelectors') {
+        return { success: true, data: { title: 'Custom Scrape Result' } };
+      }
+      return { success: true };
+    });
   });
 
   test('renders header', () => {

@@ -6,7 +6,7 @@ interface PreviewProps {
   onChange: (updated: ExtractedContent) => void;
 }
 
-type Section = 'headings' | 'paragraphs' | 'links' | 'images' | 'lists';
+type Section = 'headings' | 'paragraphs' | 'links' | 'images' | 'lists' | 'custom';
 
 const SECTIONS: { key: Section; label: string }[] = [
   { key: 'headings', label: 'Headings' },
@@ -14,10 +14,11 @@ const SECTIONS: { key: Section; label: string }[] = [
   { key: 'links', label: 'Links' },
   { key: 'images', label: 'Images' },
   { key: 'lists', label: 'Lists' },
+  { key: 'custom', label: 'Custom' },
 ];
 
 export function Preview({ data, onChange }: PreviewProps) {
-  const [activeSection, setActiveSection] = useState<Section>('headings');
+  const [activeSection, setActiveSection] = useState<Section>(data.custom ? 'custom' : 'headings');
 
   function removeHeading(idx: number) {
     onChange({ ...data, headings: data.headings.filter((_, i) => i !== idx) });
@@ -39,6 +40,13 @@ export function Preview({ data, onChange }: PreviewProps) {
     onChange({ ...data, lists: data.lists.filter((_, i) => i !== idx) });
   }
 
+  function removeCustomField(key: string) {
+    if (!data.custom) return;
+    const newCustom = { ...data.custom };
+    delete newCustom[key];
+    onChange({ ...data, custom: newCustom });
+  }
+
   return (
     <div className="space-y-3">
       {/* Page title & metadata */}
@@ -56,7 +64,7 @@ export function Preview({ data, onChange }: PreviewProps) {
 
       {/* Section tabs */}
       <div className="flex gap-1 flex-wrap">
-        {SECTIONS.map(({ key, label }) => (
+        {SECTIONS.filter(({ key }) => key !== 'custom' || data.custom).map(({ key, label }) => (
           <button
             key={key}
             onClick={() => setActiveSection(key)}
@@ -145,6 +153,21 @@ export function Preview({ data, onChange }: PreviewProps) {
                       </li>
                     )}
                   </ul>
+                </div>
+              </RemovableItem>
+            ))
+          ))}
+        {activeSection === 'custom' &&
+          (!data.custom || Object.keys(data.custom).length === 0 ? (
+            <EmptyState label="No custom fields extracted" />
+          ) : (
+            Object.entries(data.custom).map(([key, val]) => (
+              <RemovableItem key={key} onRemove={() => removeCustomField(key)}>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold text-accent-600 uppercase tracking-tight">{key}</span>
+                  <span className="text-xs text-secondary-800">
+                    {Array.isArray(val) ? val.join(', ') : val}
+                  </span>
                 </div>
               </RemovableItem>
             ))

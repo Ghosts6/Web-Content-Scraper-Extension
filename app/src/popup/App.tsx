@@ -75,21 +75,78 @@ export default function App() {
   const [savedRules, setSavedRules] = useState<SiteRule[]>([]);
 
   useEffect(() => {
-    loadDomainRules();
-    loadStoredPreferences();
-    checkPickedSelector();
+    const init = async () => {
+      console.debug('[App] Initializing popup...');
+      await loadStoredPreferences();
+      const hasRule = await loadDomainRules();
+      
+      // Try to restore draft rows and picker target if we are in the middle of picking
+      const stored = await browser.storage.local.get(['draftRows', 'pickerTargetIdx']);
+      console.debug('[App] Stored state:', stored);
+
+      if (stored.draftRows && (stored.pickerTargetIdx !== null || !hasRule)) {
+        console.debug('[App] Restoring draft rows');
+        setSelectorRows(stored.draftRows);
+      }
+
+      if (typeof stored.pickerTargetIdx === 'number') {
+        console.debug(`[App] Restoring pickerTargetIdx: ${stored.pickerTargetIdx}`);
+        setPickerTargetIdx(stored.pickerTargetIdx);
+      }
+
+      await checkPickedSelector();
+    };
+    init();
+
+    // Listen for storage changes (for picker selector)
+    const handleStorageChange = (changes: Record<string, any>, areaName: string) => {
+      if (areaName === 'local') {
+        console.debug('[App] Storage changed:', changes);
+        if (changes.pickedSelector || changes.pickedIdx || changes.pickerTargetIdx) {
+          checkPickedSelector();
+        }
+      }
+    };
+    browser.storage.onChanged.addListener(handleStorageChange);
+    return () => browser.storage.onChanged.removeListener(handleStorageChange);
   }, []);
 
   // Check for picked selector from background storage
   async function checkPickedSelector() {
     try {
-      const stored = await browser.storage.local.get(['pickedSelector', 'pickedIdx']);
+      const stored = await browser.storage.local.get(['pickedSelector', 'pickedIdx', 'pickerTargetIdx']);
+      console.debug('[App] checkPickedSelector', stored);
+
       if (stored.pickedSelector && typeof stored.pickedIdx === 'number') {
-        setSelectorRows(prev => prev.map((row, i) => i === stored.pickedIdx ? { ...row, selector: stored.pickedSelector } : row));
+        const idx = stored.pickedIdx;
+        const selector = stored.pickedSelector;
+        
+        console.debug(`[App] Applying picked selector "${selector}" to index ${idx}`);
+        
+        setSelectorRows(prev => {
+          const newRows = [...prev];
+          if (newRows[idx]) {
+            newRows[idx] = { ...newRows[idx], selector: selector };
+          }
+          browser.storage.local.set({ draftRows: newRows });
+          return newRows;
+        });
+
         setPickerTargetIdx(null);
+        
+        // Clear storage only after we've applied it to state
         await browser.storage.local.remove(['pickedSelector', 'pickedIdx']);
+        
+        // Provide visual feedback
+        setStatus('success');
+        setTimeout(() => setStatus('idle'), 2000);
+      } else if (stored.pickerTargetIdx === undefined && pickerTargetIdx !== null) {
+        console.debug('[App] Picker was deactivated remotely');
+        setPickerTargetIdx(null);
       }
-    } catch (e) { console.warn('Failed to check picked selector:', e); }
+    } catch (e) { 
+      console.warn('Failed to check picked selector:', e); 
+    }
   }
 
   // Preferences
@@ -108,7 +165,7 @@ export default function App() {
 
   // Domain rules
 
-  async function loadDomainRules() {
+  async function loadDomainRules(): Promise<boolean> {
     try {
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
       if (tab?.url) {
@@ -116,10 +173,14 @@ export default function App() {
         const rule = await getRuleForDomain(url.hostname);
         if (rule) {
           const rows = Object.entries(rule.selectors).map(([field, selector]) => ({ field, selector }));
-          if (rows.length > 0) setSelectorRows(rows);
+          if (rows.length > 0) {
+            setSelectorRows(rows);
+            return true;
+          }
         }
       }
     } catch (e) { console.warn('Failed to load domain rules:', e); }
+    return false;
   }
 
   async function loadSavedRules() {
@@ -145,9 +206,13 @@ export default function App() {
         return;
       }
       await saveRule({ domain: url.hostname, selectors });
+      // Clear draft since we've saved a real rule
+      await browser.storage.local.remove(['draftRows']);
       setStatus('success');
       setErrorMsg('Rule saved! You can reuse these selectors for this domain');
-      setTimeout(() => setStatus('idle'), 2000);
+      
+      // Force status update to show success message clearly
+      setTimeout(() => setStatus('idle'), 3000);
     } catch {
       setStatus('error');
       setErrorMsg('Failed to save rule');
@@ -197,12 +262,32 @@ export default function App() {
       return;
     }
     setStatus('loading');
+    setErrorMsg('');
     try {
       const response = await browser.runtime.sendMessage({
         action: 'scrapeWithSelectors', selectors, cleanMode,
-      }) as { success: true; data: ExtractedContent } | { success: false; error: string };
+      }) as { success: true; data: any } | { success: false; error: string };
+      
       if (!response.success) throw new Error(response.error);
-      setData(response.data); setStatus('success'); setView('preview');
+      
+      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+      
+      // Wrap custom result into ExtractedContent structure
+      const wrappedData: ExtractedContent = {
+        url: tab?.url || '',
+        title: tab?.title || 'Custom Scrape',
+        metadata: {},
+        headings: [],
+        paragraphs: [],
+        lists: [],
+        links: [],
+        images: [],
+        custom: response.data
+      };
+      
+      setData(wrappedData); 
+      setStatus('success'); 
+      setView('preview');
     } catch (e) {
       setStatus('error');
       setErrorMsg(e instanceof Error ? e.message : 'Scrape failed');
@@ -263,8 +348,16 @@ export default function App() {
   }
 
   async function handleActivatePicker(idx: number) {
+    console.debug(`[App] Activating picker for index ${idx}`);
     setPickerTargetIdx(idx);
-    await browser.runtime.sendMessage({ action: 'setPickerTarget', idx });
+    
+    // Ensure state is clean before starting
+    await browser.storage.local.remove(['pickedSelector', 'pickedIdx']);
+    await browser.storage.local.set({ 
+      pickerTargetIdx: idx,
+      draftRows: selectorRows 
+    });
+    
     await browser.runtime.sendMessage({ action: 'activatePicker' });
   }
 
@@ -373,6 +466,13 @@ export default function App() {
             </div>
           )}
 
+          {/* Success bar */}
+          {status === 'success' && errorMsg && view !== 'preview' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, background: 'rgba(190,242,100,0.1)', border: '1px solid rgba(132,204,22,0.3)', marginBottom: 12, fontSize: 11, color: '#4d7c0f' }}>
+              <span style={{ fontSize: 14 }}>✓</span> {errorMsg}
+            </div>
+          )}
+
           {/*  MAIN  */}
           {view === 'main' && (
             <MainView
@@ -414,7 +514,10 @@ export default function App() {
               cleanMode={cleanMode}
               onCleanModeChange={handleCleanModeChange}
               selectorRows={selectorRows}
-              onSelectorRowsChange={setSelectorRows}
+              onSelectorRowsChange={(rows) => {
+                setSelectorRows(rows);
+                browser.storage.local.set({ draftRows: rows });
+              }}
               pickerTargetIdx={pickerTargetIdx}
               onActivatePicker={handleActivatePicker}
               onCustomScrape={handleCustomScrape}
@@ -430,6 +533,7 @@ export default function App() {
             <RulesView
               savedRules={savedRules}
               onDeleteRule={handleDeleteRule}
+              onOpenSelectors={() => setView('selectors')}
               onBack={() => setView('selectors')}
             />
           )}

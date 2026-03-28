@@ -21,6 +21,7 @@ export interface ExtractedContent {
   lists: string[][];
   links: ExtractedLink[];
   images: ExtractedImage[];
+  custom?: CustomExtractedContent;
 }
 
 export interface CustomSelectors {

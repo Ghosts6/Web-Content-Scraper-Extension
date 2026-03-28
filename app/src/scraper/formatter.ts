@@ -76,6 +76,16 @@ export function toXML(data: ExtractedContent): string {
   );
   lines.push('  </images>');
 
+  // Custom Fields
+  if (data.custom && Object.keys(data.custom).length > 0) {
+    lines.push('  <custom_fields>');
+    Object.entries(data.custom).forEach(([key, val]) => {
+      const content = Array.isArray(val) ? val.map(v => tag('item', esc(v))).join('') : esc(val);
+      lines.push(`    ${tag(key.replace(/[^a-zA-Z0-9]/g, '_'), content)}`);
+    });
+    lines.push('  </custom_fields>');
+  }
+
   lines.push('</page>');
   return lines.join('\n');
 }
@@ -132,6 +142,18 @@ export function toMarkdown(data: ExtractedContent): string {
     );
   }
 
+  if (data.custom && Object.keys(data.custom).length > 0) {
+    sections.push('## Custom Fields');
+    Object.entries(data.custom).forEach(([key, val]) => {
+      sections.push(`### ${key}`);
+      if (Array.isArray(val)) {
+        val.forEach(v => sections.push(`- ${v}`));
+      } else {
+        sections.push(val);
+      }
+    });
+  }
+
   return sections.join('\n\n');
 }
 
@@ -178,6 +200,20 @@ export function toPlainText(data: ExtractedContent): string {
     lines.push('-'.repeat(30));
     data.links.forEach((l) => lines.push(`  ${l.text}: ${l.url}`));
     lines.push('');
+  }
+
+  if (data.custom && Object.keys(data.custom).length > 0) {
+    lines.push('CUSTOM FIELDS');
+    lines.push('-'.repeat(30));
+    Object.entries(data.custom).forEach(([key, val]) => {
+      lines.push(`${key.toUpperCase()}:`);
+      if (Array.isArray(val)) {
+        val.forEach(v => lines.push(`  • ${v}`));
+      } else {
+        lines.push(`  ${val}`);
+      }
+      lines.push('');
+    });
   }
 
   return lines.join('\n');

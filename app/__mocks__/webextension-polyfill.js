@@ -2,7 +2,7 @@ let storageData = {};
 
 const mockBrowser = {
   runtime: {
-    sendMessage: jest.fn(),
+    sendMessage: jest.fn(() => Promise.resolve({ success: true })),
     onMessage: {
       addListener: jest.fn(),
       removeListener: jest.fn(),
@@ -34,14 +34,12 @@ const mockBrowser = {
           return Promise.resolve({ ...storageData });
         }
         if (typeof keys === 'string') {
-          return Promise.resolve({ [keys]: storageData[keys] });
+          return Promise.resolve({ [keys]: storageData[keys] || {} });
         }
         if (Array.isArray(keys)) {
           const result = {};
           keys.forEach(key => {
-            if (storageData[key] !== undefined) {
-              result[key] = storageData[key];
-            }
+            result[key] = storageData[key];
           });
           return Promise.resolve(result);
         }
@@ -67,19 +65,55 @@ const mockBrowser = {
       }),
     },
     local: {
-      get: jest.fn(),
-      set: jest.fn(),
-      clear: jest.fn(),
-      remove: jest.fn(),
+      get: jest.fn((keys) => {
+        if (keys === null) {
+          return Promise.resolve({ ...storageData });
+        }
+        if (typeof keys === 'string') {
+          return Promise.resolve({ [keys]: storageData[keys] });
+        }
+        if (Array.isArray(keys)) {
+          const result = {};
+          keys.forEach(key => {
+            result[key] = storageData[key];
+          });
+          return Promise.resolve(result);
+        }
+        return Promise.resolve({});
+      }),
+      set: jest.fn((data) => {
+        for (const key in data) {
+          storageData[key] = data[key];
+        }
+        return Promise.resolve();
+      }),
+      clear: jest.fn(() => {
+        storageData = {};
+        return Promise.resolve();
+      }),
+      remove: jest.fn((keys) => {
+        if (typeof keys === 'string') {
+          delete storageData[keys];
+        } else if (Array.isArray(keys)) {
+          keys.forEach(key => delete storageData[key]);
+        }
+        return Promise.resolve();
+      }),
+    },
+    onChanged: {
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
     },
   },
   permissions: {
-    contains: jest.fn(),
-    request: jest.fn(),
+    contains: jest.fn(() => Promise.resolve(false)),
+    request: jest.fn(() => Promise.resolve(true)),
   },
   scripting: {
     executeScript: jest.fn().mockResolvedValue([]),
   },
 };
 
+// Export as both default and named to handle different import styles
 module.exports = mockBrowser;
+module.exports.default = mockBrowser;
