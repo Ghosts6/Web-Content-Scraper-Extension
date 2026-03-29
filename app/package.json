@@ -1,7 +1,7 @@
 {
   "name": "web-content-scraper-extension",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
@@ -10,6 +10,10 @@
     "build": "rm -rf dist && npm run build:chrome && npm run build:firefox",
     "build:chrome": "TARGET_BROWSER=chrome vite build",
     "build:firefox": "TARGET_BROWSER=firefox vite build",
+    "package": "npm run package:chrome && npm run package:firefox",
+    "package:chrome": "npm run build:chrome && cd dist/chrome && zip -r ../chrome-submission.zip .",
+    "package:firefox": "npm run build:firefox && cd dist/firefox && zip -r ../firefox-submission.zip .",
+    "package:source": "zip -r dist/source-code.zip . -x '**/node_modules/*' '**/dist/*' '**/.git/*'",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "test": "jest"

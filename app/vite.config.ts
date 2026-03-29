@@ -10,18 +10,14 @@ const generateManifest = (browser: string) => {
     name: 'Web Content Scraper',
     version: '1.0.0',
     description: 'Extract structured content from any webpage',
+    author: 'kiarash@kiarashbashokian.com',
+    homepage_url: 'https://kiarashbashokian.com/',
     content_security_policy: {
       extension_pages: "script-src 'self'; object-src 'self'",
     },
     action: {
       default_popup: 'popup.html',
     },
-    content_scripts: [
-      {
-        js: ['src/content.ts'],
-        matches: ['<all_urls>'],
-      },
-    ],
     icons: {
       '16': 'icons/icon16x16.png',
       '32': 'icons/icon32x32.png',
@@ -40,7 +36,7 @@ const generateManifest = (browser: string) => {
       },
       browser_specific_settings: {
         gecko: {
-          id: 'kiarash82.42@gmail.com',   // AMO account email
+          id: 'web-content-scraper@kiarashbashokian.com',
           strict_min_version: '109.0',
         },
       },
@@ -65,11 +61,16 @@ export default defineConfig(({ mode }) => {
       webExtension({
         manifest: () => generateManifest(browser),
         browser: browser,
+        additionalInputs: [
+          'src/content.ts',
+          'src/content-picker.ts',
+        ],
         rollupInputOptions: {
           input: {
             popup: path.resolve(__dirname, 'popup.html'),
             content: path.resolve(__dirname, 'src/content.ts'),
             background: path.resolve(__dirname, 'src/background.ts'),
+            'content-picker': path.resolve(__dirname, 'src/content-picker.ts'),
           },
         },
       }),
