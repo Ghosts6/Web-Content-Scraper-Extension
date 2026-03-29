@@ -10,7 +10,7 @@ Supports **Chrome** and **Firefox**.
 
 ## 🎬 Demo
 
-Coming soon
+https://github.com/user-attachments/assets/746b2c39-91ed-4639-b4a8-edd8dfd877ca
 
 ---
 
