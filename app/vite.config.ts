@@ -8,7 +8,7 @@ const generateManifest = (browser: string) => {
   const baseManifest = {
     manifest_version: 3,
     name: 'Web Content Scraper',
-    version: '1.0.0',
+    version: '1.0.1',
     description: 'Extract structured content from any webpage',
     author: 'kiarash@kiarashbashokian.com',
     homepage_url: 'https://kiarashbashokian.com/',
@@ -38,6 +38,9 @@ const generateManifest = (browser: string) => {
         gecko: {
           id: 'web-content-scraper@kiarashbashokian.com',
           strict_min_version: '109.0',
+          data_collection_permissions: {
+            required: ['none'],
+          },
         },
       },
     };

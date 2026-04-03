@@ -9,6 +9,7 @@ import { RulesView } from './components/RulesView';
 import { BatchView } from './components/BatchView';
 import { BatchResultsView } from './components/BatchResultsView';
 import { SettingsView } from './components/SettingsView';
+import { SplashScreen } from './components/SplashScreen';
 import {
   saveRule, getRuleForDomain, getAllRules, deleteRule,
   getPreferences, savePreferences,
@@ -62,6 +63,7 @@ export default function App() {
   const [errorMsg, setErrorMsg]   = useState('');
   const [cleanMode, setCleanMode] = useState(false);
   const [pickerTargetIdx, setPickerTargetIdx] = useState<number | null>(null);
+  const [showSplash, setShowSplash] = useState(false);
 
   const [selectorRows, setSelectorRows] = useState<{ field: string; selector: string }[]>([
     { field: 'title', selector: '' },
@@ -77,31 +79,44 @@ export default function App() {
   useEffect(() => {
     const init = async () => {
       console.debug('[App] Initializing popup...');
-      await loadStoredPreferences();
-      const hasRule = await loadDomainRules();
       
-      // Try to restore draft rows and picker target if we are in the middle of picking
-      const stored = await browser.storage.local.get(['draftRows', 'pickerTargetIdx']);
-      console.debug('[App] Stored state:', stored);
-
-      if (stored.draftRows && (stored.pickerTargetIdx !== null || !hasRule)) {
-        console.debug('[App] Restoring draft rows');
-        setSelectorRows(stored.draftRows);
+      // Fast check for splash screen (use sessionStorage for immediate access)
+      const splashShown = sessionStorage.getItem('wcs_splash_shown') === 'true';
+      if (!splashShown) {
+        setShowSplash(true);
       }
 
-      if (typeof stored.pickerTargetIdx === 'number') {
-        console.debug(`[App] Restoring pickerTargetIdx: ${stored.pickerTargetIdx}`);
-        setPickerTargetIdx(stored.pickerTargetIdx);
-      }
+      try {
+        await loadStoredPreferences();
+        const hasRule = await loadDomainRules();
+        
+        // Try to restore draft rows and picker target (use localStorage for immediate access)
+        const draftRowsStr = localStorage.getItem('draftRows');
+        const pickerTargetIdxStr = localStorage.getItem('pickerTargetIdx');
+        const stored = {
+          draftRows: draftRowsStr ? JSON.parse(draftRowsStr) : null,
+          pickerTargetIdx: pickerTargetIdxStr ? parseInt(pickerTargetIdxStr) : null,
+        };
+        console.debug('[App] Stored state:', stored);
 
-      await checkPickedSelector();
+        if (stored.draftRows && (stored.pickerTargetIdx !== null || !hasRule)) {
+          setSelectorRows(stored.draftRows);
+        }
+
+        if (typeof stored.pickerTargetIdx === 'number') {
+          setPickerTargetIdx(stored.pickerTargetIdx);
+        }
+
+        await checkPickedSelector();
+      } catch (e) {
+        console.error('[App] Init error:', e);
+        // Continue anyway to avoid popup crash
+      }
     };
     init();
 
-    // Listen for storage changes (for picker selector)
     const handleStorageChange = (changes: Record<string, any>, areaName: string) => {
       if (areaName === 'local') {
-        console.debug('[App] Storage changed:', changes);
         if (changes.pickedSelector || changes.pickedIdx || changes.pickerTargetIdx) {
           checkPickedSelector();
         }
@@ -110,6 +125,11 @@ export default function App() {
     browser.storage.onChanged.addListener(handleStorageChange);
     return () => browser.storage.onChanged.removeListener(handleStorageChange);
   }, []);
+
+  const handleSplashComplete = async () => {
+    sessionStorage.setItem('wcs_splash_shown', 'true');
+    setShowSplash(false);
+  };
 
   // Check for picked selector from background storage
   async function checkPickedSelector() {
@@ -128,7 +148,7 @@ export default function App() {
           if (newRows[idx]) {
             newRows[idx] = { ...newRows[idx], selector: selector };
           }
-          browser.storage.local.set({ draftRows: newRows });
+          localStorage.setItem('draftRows', JSON.stringify(newRows));
           return newRows;
         });
 
@@ -207,7 +227,7 @@ export default function App() {
       }
       await saveRule({ domain: url.hostname, selectors });
       // Clear draft since we've saved a real rule
-      await browser.storage.local.remove(['draftRows']);
+      localStorage.removeItem('draftRows');
       setStatus('success');
       setErrorMsg('Rule saved! You can reuse these selectors for this domain');
       
@@ -355,8 +375,8 @@ export default function App() {
     await browser.storage.local.remove(['pickedSelector', 'pickedIdx']);
     await browser.storage.local.set({ 
       pickerTargetIdx: idx,
-      draftRows: selectorRows 
     });
+    localStorage.setItem('draftRows', JSON.stringify(selectorRows));
     
     await browser.runtime.sendMessage({ action: 'activatePicker' });
   }
@@ -380,47 +400,8 @@ export default function App() {
     error:   'Error — try again',
   }[status];
 
-  const css = `
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&display=swap');
-    @keyframes status-ping {
-      0%   { transform: scale(1);   opacity: 0.4; }
-      100% { transform: scale(2.6); opacity: 0;   }
-    }
-    @keyframes spin-loading { to { transform: rotate(360deg); } }
-    @keyframes app-fade-in {
-      from { opacity: 0; transform: translateY(5px); }
-      to   { opacity: 1; transform: translateY(0);   }
-    }
-    @keyframes progress-shimmer { 0% { left: -60px; } 100% { left: 100%; } }
-    @keyframes rule-slide-in {
-      from { opacity: 0; transform: translateX(-6px); }
-      to   { opacity: 1; transform: translateX(0);    }
-    }
-    .app-root { animation: app-fade-in 0.28s ease both; }
-    .gb-card { position: relative; border-radius: 12px; background: #fff; }
-    .gb-card::before {
-      content: ''; position: absolute; inset: 0; border-radius: 12px; padding: 1.5px;
-      background: linear-gradient(135deg, #6366f1 0%, #818cf8 45%, #f59e0b 100%);
-      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-      -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
-    }
-    .lift-btn { transition: transform 0.14s ease, box-shadow 0.14s ease; }
-    .lift-btn:hover:not(:disabled) { transform: translateY(-1px); }
-    .lift-btn:active:not(:disabled) { transform: translateY(0); }
-    .shimmer-btn { position: relative; overflow: hidden; }
-    .shimmer-btn::after {
-      content: ''; position: absolute; inset: 0;
-      background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,0.2) 50%, transparent 62%);
-      transform: translateX(-100%); transition: transform 0.4s ease;
-    }
-    .shimmer-btn:hover:not(:disabled)::after { transform: translateX(100%); }
-    .rule-card { animation: rule-slide-in 0.2s ease both; }
-  `;
-
   return (
     <>
-      <style>{css}</style>
       <div className="app-root"
         style={{ minWidth: 360, maxWidth: 420, background: '#f8faff', position: 'relative', overflow: 'hidden' }}>
 
@@ -570,6 +551,7 @@ export default function App() {
 
         </div>
       </div>
+      {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
     </>
   );
 }

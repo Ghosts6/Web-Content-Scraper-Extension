@@ -101,57 +101,90 @@ function createPickerUI(): void {
     user-select: none;
   `;
 
-  toolbar.innerHTML = `
-    <div style="display: flex; align-items: center; gap: 10px;">
-      <span style="font-size: 18px;">🎯</span>
-      <div style="display: flex; flex-direction: column;">
-        <span style="font-size: 13px; font-weight: 700;">Element Picker</span>
-        <span style="font-size: 11px; color: rgba(255,255,255,0.6);">Click an item on the page to select it</span>
-      </div>
-    </div>
-    <div id="status-area" style="
-      font-size: 12px;
-      font-weight: 700;
-      color: #bef264;
-      background: rgba(0, 0, 0, 0.4);
-      padding: 6px 16px;
-      border-radius: 20px;
-      min-width: 220px;
-      text-align: center;
-      border: 1px solid rgba(255,255,255,0.1);
-      box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
-    ">Waiting for selection...</div>
-    <div style="display: flex; gap: 10px;">
-      <button id="cancel-btn" style="
-        padding: 8px 16px;
-        border-radius: 6px;
-        border: 1px solid rgba(255,255,255,0.2);
-        background: rgba(255,255,255,0.1);
-        color: white;
-        font-size: 12px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background 0.2s;
-      ">✕ Cancel</button>
-      <button id="confirm-btn" style="
-        padding: 8px 16px;
-        border-radius: 6px;
-        border: none;
-        background: #10b981;
-        color: white;
-        font-size: 12px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: background 0.2s;
-      ">✓ Confirm</button>
-    </div>
+  // Left side: Icon and labels
+  const leftGroup = document.createElement('div');
+  leftGroup.style.cssText = 'display: flex; align-items: center; gap: 10px;';
+  
+  const icon = document.createElement('span');
+  icon.style.fontSize = '18px';
+  icon.textContent = '🎯';
+  
+  const labelGroup = document.createElement('div');
+  labelGroup.style.cssText = 'display: flex; flex-direction: column;';
+  
+  const mainLabel = document.createElement('span');
+  mainLabel.style.cssText = 'font-size: 13px; font-weight: 700;';
+  mainLabel.textContent = 'Element Picker';
+  
+  const subLabel = document.createElement('span');
+  subLabel.style.cssText = 'font-size: 11px; color: rgba(255,255,255,0.6);';
+  subLabel.textContent = 'Click an item on the page to select it';
+  
+  labelGroup.appendChild(mainLabel);
+  labelGroup.appendChild(subLabel);
+  leftGroup.appendChild(icon);
+  leftGroup.appendChild(labelGroup);
+
+  // Center: Status Area
+  const statusArea = document.createElement('div');
+  statusArea.id = 'status-area';
+  statusArea.style.cssText = `
+    font-size: 12px;
+    font-weight: 700;
+    color: #bef264;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 6px 16px;
+    border-radius: 20px;
+    min-width: 220px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
   `;
+  statusArea.textContent = 'Waiting for selection...';
+
+  // Right side: Buttons
+  const rightGroup = document.createElement('div');
+  rightGroup.style.cssText = 'display: flex; gap: 10px;';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.id = 'cancel-btn';
+  cancelBtn.style.cssText = `
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.1);
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  `;
+  cancelBtn.textContent = '✕ Cancel';
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.id = 'confirm-btn';
+  confirmBtn.style.cssText = `
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    background: #10b981;
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+  `;
+  confirmBtn.textContent = '✓ Confirm';
+
+  rightGroup.appendChild(cancelBtn);
+  rightGroup.appendChild(confirmBtn);
+
+  toolbar.appendChild(leftGroup);
+  toolbar.appendChild(statusArea);
+  toolbar.appendChild(rightGroup);
 
   shadowRoot.appendChild(toolbar);
   (document.body || document.documentElement).appendChild(pickerContainer);
-
-  const confirmBtn = shadowRoot.getElementById('confirm-btn');
-  const cancelBtn = shadowRoot.getElementById('cancel-btn');
 
   confirmBtn?.addEventListener('click', (e) => {
     console.debug('[Picker] Toolbar: Confirm button listener');
