@@ -12,6 +12,8 @@ interface BatchViewProps {
   onBatchScrape: () => void;
   onBack: () => void;
   status: Status;
+  hasPermission: boolean;
+  onRequestPermission: () => void;
 }
 
 export function BatchView({
@@ -23,13 +25,15 @@ export function BatchView({
   onBatchScrape,
   onBack,
   status,
+  hasPermission,
+  onRequestPermission,
 }: BatchViewProps) {
   const urlCount = batchUrls.split('\n').filter(u => u.trim().startsWith('http')).length;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <SubHeader
-        icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>}
+        icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>}
         title="Batch Scraper"
         subtitle="Scrape multiple pages in one run"
         titleGradient="linear-gradient(90deg, #3730a3 0%, #6366f1 60%, #d97706 100%)"
@@ -38,6 +42,40 @@ export function BatchView({
       />
 
       <CleanModeRow checked={cleanMode} onChange={onCleanModeChange} />
+
+      {!hasPermission && (
+        <div style={{
+          padding: '12px 16px',
+          background: 'rgba(245,158,11,0.06)',
+          border: '1px solid rgba(245,158,11,0.25)',
+          borderRadius: 10,
+          marginBottom: 4
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <span style={{ fontSize: 14 }}>🛡️</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#92400e' }}>Website Access Required</span>
+          </div>
+          <p style={{ fontSize: 10, color: '#b45309', margin: '0 0 10px 0', lineHeight: 1.5 }}>
+            Batch scraping requires permission to access the websites you list. This is processed 100% locally.
+          </p>
+          <button
+            onClick={onRequestPermission}
+            style={{
+              width: '100%',
+              padding: '6px 0',
+              borderRadius: 6,
+              border: 'none',
+              background: '#f59e0b',
+              color: '#fff',
+              fontSize: 10,
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            Grant Access Permissions
+          </button>
+        </div>
+      )}
 
       <div className="gb-card" style={{ padding: '14px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>

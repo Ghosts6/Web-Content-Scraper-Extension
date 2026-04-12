@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, store-ready-prep ]
+    branches: [ main, store-ready-prep, store-chrome]
   pull_request:
-    branches: [ main, store-ready-prep ]
+    branches: [ main, store-ready-prep, store-chrome ]
 
 jobs:
   build_and_test:

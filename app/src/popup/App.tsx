@@ -73,6 +73,7 @@ export default function App() {
   const [batchResults, setBatchResults]   = useState<ExtractedContent[]>([]);
   const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null);
   const [batchExportFormat, setBatchExportFormat] = useState<ExportFormat>('json');
+  const [hasBatchPermission, setHasBatchPermission] = useState(false);
 
   const [savedRules, setSavedRules] = useState<SiteRule[]>([]);
 
@@ -80,6 +81,12 @@ export default function App() {
     const init = async () => {
       console.debug('[App] Initializing popup...');
       
+      // Check for batch permissions
+      try {
+        const hasPerm = await browser.permissions.contains({ origins: ['<all_urls>'] });
+        setHasBatchPermission(hasPerm);
+      } catch (e) { console.warn('Permission check failed:', e); }
+
       // Fast check for splash screen (use sessionStorage for immediate access)
       const splashShown = sessionStorage.getItem('wcs_splash_shown') === 'true';
       if (!splashShown) {
@@ -125,6 +132,22 @@ export default function App() {
     browser.storage.onChanged.addListener(handleStorageChange);
     return () => browser.storage.onChanged.removeListener(handleStorageChange);
   }, []);
+
+  const handleRequestPermission = async () => {
+    try {
+      const granted = await browser.permissions.request({ origins: ['<all_urls>'] });
+      setHasBatchPermission(granted);
+      if (granted) {
+        setStatus('success');
+        setErrorMsg('Permission granted! You can now start batch scraping.');
+        setTimeout(() => { setStatus('idle'); setErrorMsg(''); }, 2000);
+      }
+    } catch (e) {
+      console.error('Permission request error:', e);
+      setStatus('error');
+      setErrorMsg('Failed to request permission');
+    }
+  };
 
   const handleSplashComplete = async () => {
     sessionStorage.setItem('wcs_splash_shown', 'true');
@@ -318,6 +341,22 @@ export default function App() {
   async function handleBatchScrape() {
     const urls = batchUrls.split('\n').map(u => u.trim()).filter(u => u.startsWith('http'));
     if (urls.length === 0) return;
+
+    if (!hasBatchPermission) {
+      try {
+        const granted = await browser.permissions.request({ origins: ['<all_urls>'] });
+        setHasBatchPermission(granted);
+        if (!granted) {
+          setStatus('error');
+          setErrorMsg('Batch scraping requires website access permissions.');
+          return;
+        }
+      } catch (e) {
+        setStatus('error');
+        setErrorMsg('Failed to request permission');
+        return;
+      }
+    }
 
     setStatus('loading');
     setBatchResults([]);
@@ -530,6 +569,8 @@ export default function App() {
               onBatchScrape={handleBatchScrape}
               onBack={() => setView('main')}
               status={status}
+              hasPermission={hasBatchPermission}
+              onRequestPermission={handleRequestPermission}
             />
           )}
 
