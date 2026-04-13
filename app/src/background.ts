@@ -41,6 +41,23 @@ async function sendToActiveTab(message: MessageType): Promise<unknown> {
       };
     }
 
+    if (tab.url) {
+      if (tab.url.startsWith('about:') || tab.url.startsWith('chrome:') || tab.url.startsWith('moz-extension:')) {
+        return {
+          success: false,
+          error: 'Browser restricted page. The scraper cannot access internal browser pages.',
+          errorCode: 'RESTRICTED_PAGE',
+        };
+      }
+      if (tab.url.startsWith('file:')) {
+        return {
+          success: false,
+          error: 'Local file detected. The scraper requires "Allow access to file URLs" enabled in extension settings.',
+          errorCode: 'LOCAL_FILE',
+        };
+      }
+    }
+
     // Ensure content script is injected (idempotent for already-injected tabs)
     try {
       await browser.scripting.executeScript({

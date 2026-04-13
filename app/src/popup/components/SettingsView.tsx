@@ -67,15 +67,6 @@ export function SettingsView({ onBack }: SettingsViewProps) {
     savePreferences({ [key]: value });
   };
 
-  const addNoiseSelector = () => {
-    if (!preferences) return;
-    const newSelector = prompt('Enter a CSS selector to exclude:');
-    if (newSelector && newSelector.trim()) {
-      const updatedSelectors = [...preferences.noiseSelectors, newSelector.trim()];
-      updatePreference('noiseSelectors', updatedSelectors);
-    }
-  };
-
   const removeNoiseSelector = (index: number) => {
     if (!preferences) return;
     const updatedSelectors = preferences.noiseSelectors.filter((_, i) => i !== index);
@@ -89,6 +80,19 @@ export function SettingsView({ onBack }: SettingsViewProps) {
       '.ad', '.ads', '.advertisement', '.sidebar', '.cookie-banner',
     ];
     updatePreference('noiseSelectors', defaultSelectors);
+  };
+
+  const [newSelector, setNewSelector] = useState('');
+
+  const handleAddSelector = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!preferences || !newSelector.trim()) return;
+    
+    if (!preferences.noiseSelectors.includes(newSelector.trim())) {
+      const updatedSelectors = [...preferences.noiseSelectors, newSelector.trim()];
+      updatePreference('noiseSelectors', updatedSelectors);
+    }
+    setNewSelector('');
   };
 
   if (loading) {
@@ -190,32 +194,117 @@ export function SettingsView({ onBack }: SettingsViewProps) {
       <div className="gb-card" style={{ padding: '12px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <h3 style={{ fontSize: 12, fontWeight: 700, color: '#1e293b', margin: 0, letterSpacing: '0.01em' }}>Noise Selectors</h3>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button onClick={addNoiseSelector} className="settings-btn-sm settings-btn-green">Add</button>
-            <button onClick={resetNoiseSelectors} className="settings-btn-sm settings-btn-gray">Reset</button>
-          </div>
+          <button 
+            onClick={resetNoiseSelectors} 
+            className="settings-btn-sm settings-btn-gray"
+            title="Reset to default noise selectors"
+          >
+            Reset Defaults
+          </button>
         </div>
+        
         <p style={{ fontSize: 10.5, color: '#64748b', margin: '0 0 12px', lineHeight: 1.5 }}>
-          CSS selectors to exclude during clean mode.
+          CSS selectors to exclude during clean mode (ads, nav, etc.)
         </p>
-        <div style={{ maxHeight: 160, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 8 }}>
+
+        <form 
+          onSubmit={handleAddSelector}
+          style={{ 
+            display: 'flex', 
+            gap: 8, 
+            marginBottom: 12,
+            position: 'relative' 
+          }}
+        >
+          <input
+            type="text"
+            value={newSelector}
+            onChange={(e) => setNewSelector(e.target.value)}
+            placeholder="Add selector (e.g. .ad-banner)"
+            style={{
+              flex: 1,
+              padding: '7px 10px',
+              borderRadius: 6,
+              fontSize: 10.5,
+              border: '1px solid rgba(203, 213, 225, 0.7)',
+              background: 'rgba(248, 250, 255, 0.8)',
+              outline: 'none',
+              transition: 'all 0.15s'
+            }}
+            onFocus={(e) => e.target.style.borderColor = '#10b981'}
+            onBlur={(e) => e.target.style.borderColor = 'rgba(203, 213, 225, 0.7)'}
+          />
+          <button
+            type="submit"
+            disabled={!newSelector.trim()}
+            style={{
+              padding: '0 12px',
+              borderRadius: 6,
+              border: 'none',
+              background: newSelector.trim() ? '#10b981' : 'rgba(16, 185, 129, 0.3)',
+              color: 'white',
+              fontSize: 10.5,
+              fontWeight: 600,
+              cursor: newSelector.trim() ? 'pointer' : 'not-allowed',
+              transition: 'all 0.15s'
+            }}
+          >
+            Add
+          </button>
+        </form>
+
+        <div style={{ 
+          display: 'flex', 
+          flexWrap: 'wrap', 
+          gap: 6, 
+          maxHeight: 140, 
+          overflowY: 'auto',
+          padding: '2px'
+        }}>
           {preferences.noiseSelectors.map((selector, index) => (
-            <div key={index} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input
-                type="text"
-                value={selector}
-                onChange={(e) => {
-                  const updatedSelectors = [...preferences.noiseSelectors];
-                  updatedSelectors[index] = e.target.value;
-                  updatePreference('noiseSelectors', updatedSelectors);
+            <div 
+              key={`${selector}-${index}`}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '3px 8px',
+                background: 'rgba(16, 185, 129, 0.08)',
+                border: '1px solid rgba(16, 185, 129, 0.15)',
+                borderRadius: 4,
+                fontSize: 10,
+                color: '#065f46',
+                fontFamily: "'Courier New', monospace",
+                fontWeight: 600
+              }}
+            >
+              <span>{selector}</span>
+              <button
+                onClick={() => removeNoiseSelector(index)}
+                style={{
+                  border: 'none',
+                  background: 'none',
+                  padding: '0 0 0 2px',
+                  cursor: 'pointer',
+                  color: '#059669',
+                  fontSize: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  lineHeight: 1
                 }}
-                className="form-input flex-1"
-              />
-              <button onClick={() => removeNoiseSelector(index)} className="noise-remove-btn">
-                ✕
+                title={`Remove ${selector}`}
+              >
+                ×
               </button>
             </div>
           ))}
+          
+          {preferences.noiseSelectors.length === 0 && (
+            <div style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic', width: '100%', textAlign: 'center', padding: '10px 0' }}>
+              No selectors added.
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -12,6 +12,8 @@ interface BatchViewProps {
   onBatchScrape: () => void;
   onBack: () => void;
   status: Status;
+  hasPermission: boolean;
+  onRequestPermission: () => void;
 }
 
 export function BatchView({
@@ -23,6 +25,8 @@ export function BatchView({
   onBatchScrape,
   onBack,
   status,
+  hasPermission,
+  onRequestPermission,
 }: BatchViewProps) {
   const urlCount = batchUrls.split('\n').filter(u => u.trim().startsWith('http')).length;
 
@@ -38,6 +42,40 @@ export function BatchView({
       />
 
       <CleanModeRow checked={cleanMode} onChange={onCleanModeChange} />
+
+      {!hasPermission && (
+        <div className="gb-card" style={{ padding: '12px 14px', background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.2)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#b45309' }}>Website Access Required</span>
+          </div>
+          <p style={{ fontSize: 10, color: '#92400e', margin: '0 0 10px 0', lineHeight: 1.5 }}>
+            Batch scraping requires permission to access the websites you list. 
+            This process is 100% local — no data is ever sent to our servers.
+          </p>
+          <button
+            onClick={onRequestPermission}
+            className="lift-btn"
+            style={{
+              width: '100%',
+              padding: '6px 12px',
+              borderRadius: 6,
+              border: '1px solid #d97706',
+              background: '#fff',
+              color: '#d97706',
+              fontSize: 10,
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            Grant Access Permissions
+          </button>
+        </div>
+      )}
 
       <div className="gb-card" style={{ padding: '14px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>

@@ -69,7 +69,6 @@ describe('SettingsView', () => {
   });
 
   it('should add a noise selector', async () => {
-    window.prompt = jest.fn().mockReturnValue('div.ad');
     (browser.runtime.sendMessage as jest.Mock).mockResolvedValueOnce({ success: true, data: mockPreferences });
     (browser.runtime.sendMessage as jest.Mock).mockResolvedValueOnce({ success: true });
 
@@ -77,6 +76,8 @@ describe('SettingsView', () => {
     
     await waitFor(() => screen.getByText('Noise Selectors'));
 
+    const input = screen.getByPlaceholderText(/Add selector/);
+    fireEvent.change(input, { target: { value: 'div.ad' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
     await waitFor(() => {
@@ -93,10 +94,10 @@ describe('SettingsView', () => {
 
     render(<SettingsView onBack={() => {}} />);
     
-    await waitFor(() => screen.getByDisplayValue('script'));
+    await waitFor(() => screen.getByText('script'));
 
-    const removeButtons = screen.getAllByRole('button', { name: '✕' });
-    fireEvent.click(removeButtons[0]);
+    const removeButton = screen.getByTitle('Remove script');
+    fireEvent.click(removeButton);
 
     await waitFor(() => {
       expect(browser.runtime.sendMessage).toHaveBeenCalledWith({
@@ -114,7 +115,7 @@ describe('SettingsView', () => {
 
     await waitFor(() => screen.getByText('Noise Selectors'));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reset Defaults' }));
 
     await waitFor(() => {
       expect(browser.runtime.sendMessage).toHaveBeenCalledWith({

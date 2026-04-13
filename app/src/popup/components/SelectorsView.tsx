@@ -16,6 +16,7 @@ interface SelectorsViewProps {
   onViewRules: () => void;
   onBack: () => void;
   status: Status;
+  errorCode?: string | null;
 }
 
 export function SelectorsView({
@@ -30,6 +31,7 @@ export function SelectorsView({
   onViewRules,
   onBack,
   status,
+  errorCode,
 }: SelectorsViewProps) {
   const handleFieldChange = (idx: number, field: string) => {
     onSelectorRowsChange(selectorRows.map((r, i) => i === idx ? { ...r, field } : r));
@@ -135,6 +137,25 @@ export function SelectorsView({
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" /></svg> Saved
           </button>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, background: 'rgba(248,250,255,0.95)', border: '1px solid rgba(203,213,225,0.55)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ 
+            width: 7, height: 7, borderRadius: '50%', 
+            background: status === 'error' ? '#ef4444' : status === 'success' ? '#22c55e' : status === 'loading' ? '#f59e0b' : '#94a3b8',
+            animation: (status === 'loading' || status === 'error') ? 'status-ping 1.2s ease-out infinite' : 'none'
+          }} />
+          <span style={{ fontFamily: "'Courier New', monospace", fontSize: 10, letterSpacing: '0.02em', color: status === 'error' ? '#dc2626' : status === 'success' ? '#15803d' : '#64748b' }}>
+            {status === 'loading' ? 'Scraping…' : 
+             status === 'success' ? '✓ Operation successful' :
+             status === 'error' ? (
+               errorCode === 'RESTRICTED_PAGE' ? 'Error: Restricted page' :
+               errorCode === 'LOCAL_FILE' ? 'Error: Local file access needed' :
+               'Error — try again'
+             ) : 'Ready to scrape'}
+          </span>
         </div>
       </div>
     </div>

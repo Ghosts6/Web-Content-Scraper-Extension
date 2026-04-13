@@ -31,6 +31,10 @@ jest.mock('webextension-polyfill', () => ({
       removeListener: jest.fn(),
     },
   },
+  permissions: {
+    contains: jest.fn().mockResolvedValue(false),
+    request: jest.fn().mockResolvedValue(true),
+  },
 }));
 
 const mockBrowser = browser as jest.Mocked<typeof browser>;
@@ -138,7 +142,7 @@ describe('App Component', () => {
     render(<App />);
     await userEvent.click(screen.getByText(/Scrape This Page/));
     await waitFor(() => {
-      expect(screen.getByText('Scrape failed')).toBeInTheDocument();
+      expect(screen.getByText('Error — try again')).toBeInTheDocument();
     });
   });
 
@@ -147,7 +151,33 @@ describe('App Component', () => {
     render(<App />);
     await userEvent.click(screen.getByText(/Scrape This Page/));
     await waitFor(() => {
-      expect(screen.getByText('Network error')).toBeInTheDocument();
+      expect(screen.getByText('Error — try again')).toBeInTheDocument();
+    });
+  });
+
+  test('shows specific error message for restricted pages', async () => {
+    mockBrowser.runtime.sendMessage.mockResolvedValueOnce({ 
+      success: false, 
+      error: 'Restricted page', 
+      errorCode: 'RESTRICTED_PAGE' 
+    });
+    render(<App />);
+    await userEvent.click(screen.getByText(/Scrape This Page/));
+    await waitFor(() => {
+      expect(screen.getByText('Error: Browser restricted page')).toBeInTheDocument();
+    });
+  });
+
+  test('shows specific error message for local files', async () => {
+    mockBrowser.runtime.sendMessage.mockResolvedValueOnce({ 
+      success: false, 
+      error: 'Local file', 
+      errorCode: 'LOCAL_FILE' 
+    });
+    render(<App />);
+    await userEvent.click(screen.getByText(/Scrape This Page/));
+    await waitFor(() => {
+      expect(screen.getByText('Error: Local file access needed')).toBeInTheDocument();
     });
   });
 
@@ -232,7 +262,7 @@ describe('App Component', () => {
       await userEvent.type(selectorInput, 'h1');
       await userEvent.click(screen.getByText('💾 Save Rule for Domain'));
       await waitFor(() => {
-        expect(screen.getByText(/Failed to save rule/)).toBeInTheDocument();
+        expect(screen.getByText('Error — try again')).toBeInTheDocument();
       });
     });
 

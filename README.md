@@ -4,7 +4,7 @@
 
 A browser extension that extracts structured content from any webpage and exports it in multiple formats. Built for developers, researchers, and data collectors who need clean, structured page data without writing custom scraping scripts.
 
-Supports **Chrome** and **Firefox**.
+Supports **Firefox**.
 
 ---
 
@@ -41,7 +41,7 @@ https://github.com/user-attachments/assets/746b2c39-91ed-4639-b4a8-edd8dfd877ca
 | Browser API | WebExtensions API + `webextension-polyfill` |
 | Testing | Jest + Testing Library + jsdom |
 | CI/CD | GitHub Actions + Docker |
-| Target browsers | Chrome (Manifest V3), Firefox |
+| Target browsers | Firefox |
 | Package management | npm |
 
 ---
@@ -102,26 +102,17 @@ app/
 cd app
 npm install
 
-# Build for Chrome
-npm run build:chrome
-
-# Build for Firefox
-npm run build:firefox
+# Build
+npm run build
 ```
 
-Built extensions are output to `app/dist/chrome` and `app/dist/firefox`.
+Built extensions are output to `app/dist/firefox`.
 
 ### Run with Docker
 
 ```bash
-# Build and run both browser variants
+# Build and run Firefox variant
 docker compose up
-
-# Chrome only
-docker compose up chrome
-
-# Firefox only
-docker compose up firefox
 ```
 
 ### Run Tests
@@ -135,20 +126,9 @@ npm test
 
 ## 🔌 Loading the Extension in Dev Mode
 
-### Chrome
-
-1. Build: `npm run build:chrome`
-2. Open Chrome and navigate to `chrome://extensions`
-3. Enable **Developer mode** using the toggle in the top right
-4. Click **Load unpacked**
-5. Select the `app/dist/chrome` folder
-6. The extension icon appears in your toolbar
-
-To reload after a code change: rebuild, then click the refresh icon on the extension card.
-
 ### Firefox
 
-1. Build: `npm run build:firefox`
+1. Build: `npm run build`
 2. Open Firefox and navigate to `about:debugging`
 3. Click **This Firefox** in the left sidebar
 4. Click **Load Temporary Add-on**
@@ -159,7 +139,7 @@ To reload after a code change: rebuild, then click the refresh icon on the exten
 
 ### Using Docker Builds with the Browser
 
-Docker builds write output to `app/dist/chrome` or `app/dist/firefox` on your host machine via the volume mount. Load that folder exactly the same way as above - Docker only handles the build step, not the browser loading.
+Docker builds write output to `app/dist/firefox` on your host machine via the volume mount. Load that folder exactly the same way as above - Docker only handles the build step, not the browser loading.
 
 ---
 

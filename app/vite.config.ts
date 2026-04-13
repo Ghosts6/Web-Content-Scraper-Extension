@@ -4,11 +4,11 @@ import webExtension from 'vite-plugin-web-extension';
 import path from 'path';
 
 // Function to generate the manifest
-const generateManifest = (browser: string) => {
-  const baseManifest = {
+const generateManifest = () => {
+  return {
     manifest_version: 3,
     name: 'Web Content Scraper',
-    version: '1.0.1',
+    version: '1.0.2',
     description: 'Extract structured content from any webpage',
     author: 'kiarash@kiarashbashokian.com',
     homepage_url: 'https://kiarashbashokian.com/',
@@ -25,44 +25,30 @@ const generateManifest = (browser: string) => {
       '128': 'icons/icon128x128.png',
     },
     permissions: ['activeTab', 'scripting', 'storage', 'tabs'],
-    host_permissions: ['<all_urls>'],
-  };
-
-  if (browser === 'firefox') {
-    return {
-      ...baseManifest,
-      background: {
-        scripts: ['src/background.ts'],
-      },
-      browser_specific_settings: {
-        gecko: {
-          id: 'web-content-scraper@kiarashbashokian.com',
-          strict_min_version: '109.0',
-          data_collection_permissions: {
-            required: ['none'],
-          },
+    optional_host_permissions: ['<all_urls>'],
+    background: {
+      scripts: ['src/background.ts'],
+    },
+    browser_specific_settings: {
+      gecko: {
+        id: 'web-content-scraper@kiarashbashokian.com',
+        strict_min_version: '109.0',
+        data_collection_permissions: {
+          required: ['none'],
         },
       },
-    };
-  }
-
-  // Default to Chrome
-  return {
-    ...baseManifest,
-    background: {
-      service_worker: 'src/background.ts',
     },
   };
 };
 
 export default defineConfig(({ mode }) => {
-  const browser = process.env.TARGET_BROWSER || 'chrome'; // Default to chrome
+  const browser = 'firefox';
 
   return {
     plugins: [
       react(),
       webExtension({
-        manifest: () => generateManifest(browser),
+        manifest: () => generateManifest(),
         browser: browser,
         additionalInputs: [
           'src/content.ts',

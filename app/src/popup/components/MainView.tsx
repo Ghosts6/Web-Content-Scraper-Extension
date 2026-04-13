@@ -28,13 +28,24 @@ export function MainView({
   onViewSettings,
   onViewPreview,
   onViewExport,
+  errorCode,
 }: MainViewProps) {
-  const statusLabel = {
-    idle: 'Ready to scrape',
-    loading: 'Scanning page…',
-    success: data?.title ? `✓ ${data.title.slice(0, 26)}${data.title.length > 26 ? '…' : ''}` : '✓ Done',
-    error: 'Error — try again',
-  }[status];
+  const getStatusLabel = () => {
+    if (status === 'loading') return 'Scanning page…';
+    if (status === 'success') {
+      return data?.title 
+        ? `✓ ${data.title.slice(0, 26)}${data.title.length > 26 ? '…' : ''}` 
+        : '✓ Done';
+    }
+    if (status === 'error') {
+      if (errorCode === 'RESTRICTED_PAGE') return 'Error: Browser restricted page';
+      if (errorCode === 'LOCAL_FILE') return 'Error: Local file access needed';
+      return 'Error — try again';
+    }
+    return 'Ready to scrape';
+  };
+
+  const statusLabel = getStatusLabel();
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
