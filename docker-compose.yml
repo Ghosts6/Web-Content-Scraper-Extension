@@ -10,15 +10,3 @@ services:
       - ./app:/app
       - /app/node_modules
     command: npm run dev:chrome
-
-  firefox:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        - TARGET_BROWSER=firefox
-    working_dir: /app
-    volumes:
-      - ./app:/app
-      - /app/node_modules
-    command: npm run dev:firefox

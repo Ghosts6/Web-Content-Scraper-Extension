@@ -4,9 +4,32 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Web Content Scraper</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&family=Orbitron:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --popup-width: 420px;
+      --popup-min-width: 360px;
+      --popup-max-width: 420px;
+      --popup-height: 387px;
+    }
+
+    html, body {
+      width: var(--popup-width);
+      min-width: var(--popup-min-width);
+      max-width: var(--popup-max-width);
+      height: var(--popup-height);
+      min-height: var(--popup-height);
+      max-height: var(--popup-height);
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+
+    #root {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
 </head>
 <body>
   <div id="root"></div>

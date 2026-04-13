@@ -442,14 +442,26 @@ export default function App() {
   return (
     <>
       <div className="app-root"
-        style={{ minWidth: 360, maxWidth: 420, background: '#f8faff', position: 'relative', overflow: 'hidden' }}>
+        style={{
+          width: '420px',
+          minWidth: '360px',
+          maxWidth: '420px',
+          height: '387px',
+          minHeight: '387px',
+          maxHeight: '387px',
+          background: 'rgb(248, 250, 255)',
+          position: 'relative',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+        }}>
 
         {/* Background atmosphere */}
         <div style={{ position: 'absolute', width: 280, height: 200, top: -70, left: -70, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.09) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', width: 220, height: 200, bottom: -50, right: -50, borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,158,11,0.07) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', inset: 0, backgroundImage: `linear-gradient(rgba(99,102,241,0.028) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.028) 1px, transparent 1px)`, backgroundSize: '24px 24px', pointerEvents: 'none' }} />
 
-        <div style={{ position: 'relative', padding: '16px 16px 20px' }}>
+        <div style={{ position: 'relative', padding: '14px 14px 16px', height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
 
           {/*  HEADER  */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>

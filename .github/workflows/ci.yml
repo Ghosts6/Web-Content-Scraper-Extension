@@ -16,11 +16,7 @@ jobs:
     - name: Build chrome variant
       run: |
         docker build --build-arg TARGET_BROWSER=chrome -t web-content-scraper-extension:latest .
-
-    - name: Build Firefox variant
-      run: |
-        docker build --build-arg TARGET_BROWSER=firefox -t web-content-scraper-extension:firefox .
-
+        
     - name: Run tests
       run: |
         cd app
